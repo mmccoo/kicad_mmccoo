@@ -1,0 +1,7 @@
+This is a spec for pcbnew's class hierarchy.
+
+This file is processed using (the very nice) plantuml tool:
+http://plantuml.com/
+
+This spec doesn't include everything available pcbnew, just the classes and APIs that I've found necessary to do useful work.
+

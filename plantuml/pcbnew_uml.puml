@@ -1,0 +1,169 @@
+# Copyright [2017] [Miles McCoo]
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+@startuml
+
+pcbnew --> Board
+Board --> NetMap
+Board o-- "0..*" Pad
+Board o-- "0..*" Module
+NetMap o-- "0..*" Net
+Pad --> wxPoint
+Pad --> Module
+Pad --> wxSize
+Pad --> PadShape
+Board --> EDA_RECT
+Board o-- Track
+Module o-- Pad
+Net --> NetClass
+Net o-- Pad
+Net --> Board
+Track --> Net
+Track --> wxPoint
+
+Track <|-- Via
+Via --> ViaType
+
+class pcbnew {
+      Board GetBoard()
+      Track TRACK(board)
+      Via   VIA(board)
+      
+      int LAYER_ID_COUNT
+}
+
+class Board {
+      NetMap GetNetsByNetcode()
+      NetMap GetNetsByName()
+      Pad[] GetPads()
+      EDA_RECT ComputeBoundingBox()
+      Track[] TracksInNet(int netcode)
+      # GetTracks() actually returns a track_list
+      # tracks inclue Vias
+      Track[] GetTracks()
+      # there's not an exposed way to cast track->via
+      VIA GetViaByPosition(wxPoint)
+      Module[] GetModules()
+      Module FindModuleByReference(string)
+      string GetLayerName(int)
+      --
+      Add(Track)
+      Remove(Track)
+}
+
+class Pad  {
+      string GetPadName()
+      Net GetNet()
+      wxPoint GetPosition()
+      Module GetParent()
+      wxSize GetSize() # this is affected by the orientation
+      double GetOrientationDegrees()
+      int GetShape() # compare to PadShapevalues
+}
+
+class Module {
+--
+      string GetReference()
+      string GetValue()
+      Pad[] Pads()
+      # elements of subsheets
+      # will have similar paths
+      string GetPath)(
+--
+      SetPosition(pcbnew.wxPoint(x,y))
+}
+
+class NetMap {
+      Net[] items()
+      NetIterator find()
+}
+
+class Net {
+  NetClass GetNetClass()
+  int GetNet() # netcode
+  string GetNetname()
+  Pad[] Pads()
+  Board GetParent()
+  --
+  To get tracks, use Board::TracksInNet
+}
+
+NetClass : int GetTrackWidth()
+
+class wxPoint {
+      int x
+      int y
+}
+
+class wxSize {
+      int x
+      int y
+}
+
+class EDA_RECT {
+      int GetX()
+      int GetY()
+      int GetWidth()
+      int GetHeight()
+}
+
+class Track {
+      wxPoint GetStart()
+      wxPoint GetEnd()
+      int GetWidth()
+      int GetLayer()
+      Net GetNet()
+      --
+      SetStart(pcbnew.wxPoint(int, int))
+      SetEnd(pcbnew.wxPoint(int, int))
+      SetWidth(int)
+      SetLayer(int)
+
+
+      SetNet(Net)
+}
+
+class Via {
+   # I haven't found a way to get the layers directly.
+   # unable to allocate the LAYER_ID objects
+   LayerPair(LAYER_ID* top_layer, LAYER_ID* bottom_layer )
+   wxPoint GetPosition()
+   ViaType GetViaType()
+   int GetWidth()
+   --
+   SetPosition(pcbnew.wxPoint(int, int))
+   SetViaType(ViaType)
+   SetWidth(int)
+   SetLayerPair(int top, int bottom)
+   # iterate through pcbnew.LAYER_ID_COUNT
+   bool IsOnLayer()
+}
+
+class PadShape {
+    int pcbnew.PAD_SHAPE_CIRCLE
+    int pcbnew.PAD_SHAPE_OVAL
+    int pcbnew.PAD_SHAPE_RECT
+    int pcbnew.PAD_SHAPE_ROUNDRECT
+    int pcbnew.PAD_SHAPE_TRAPEZOID
+}
+
+class ViaType {
+    int pcbnew.VIA_THROUGH     
+    int pcbnew.VIA_BLIND_BURIED
+    int pcbnew.VIA_MICROVIA    
+    int pcbnew.VIA_NOT_DEFINED
+}
+@enduml
+
