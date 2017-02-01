@@ -83,6 +83,7 @@ class Module {
       string GetPath)(
 --
       SetPosition(pcbnew.wxPoint(x,y))
+      SetOrientation(degrees*10.0)
 }
 
 class NetMap {

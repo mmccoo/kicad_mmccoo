@@ -27,10 +27,10 @@ board = pcbnew.GetBoard()
 # NETS
 ######
 
-# what to know all of the nets in your board?
+# want to know all of the nets in your board?
 # nets can be looked up in two ways:
 #  by name
-#  by netcode - a unique integer identifier for you net.
+#  by netcode - a unique integer identifier for your net.
 
 # returns a dictionary netcode:netinfo_item
 netcodes = board.GetNetsByNetcode()
