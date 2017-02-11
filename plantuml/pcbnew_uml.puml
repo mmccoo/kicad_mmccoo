@@ -19,14 +19,22 @@ pcbnew --> Board
 Board --> NetMap
 Board o-- "0..*" Pad
 Board o-- "0..*" Module
+Board o-- ZoneContainer
+
 NetMap o-- "0..*" Net
+
 Pad --> wxPoint
 Pad --> Module
 Pad --> wxSize
 Pad --> PadShape
 Board --> EDA_RECT
 Board o-- Track
+Board o-- DrawSegment
 Module o-- Pad
+Module o-- DrawSegment
+
+ZoneContainer --> CPolyLine
+
 Net --> NetClass
 Net o-- Pad
 Net --> Board
@@ -58,9 +66,51 @@ class Board {
       Module[] GetModules()
       Module FindModuleByReference(string)
       string GetLayerName(int)
+      # zone stuff
+      int GetAreaCount()
+      ZoneContainer GetArea(int)
       --
       Add(Track)
       Remove(Track)
+      Add(DrawSegment)
+      Remove(DrawSegment)
+
+      ZoneContainer InsertArea(int netcode, 0, int layer, int x, int y, int hatch)
+}
+
+class DrawSegment {
+      string GetLayerName()
+      wxPoint GetStart()
+      wxPoint GetEnd()
+      --
+      SetStart(wxPoint)
+      SetEnd(wxPoint)
+      SetLayer(int)
+}
+
+class ZoneContainer {
+      int GetLayer()
+      string GetLayerName()
+      Net GetNet()
+
+      CPolyLine Outline()
+}
+
+class CPolyLine {
+      int GetContoursCount()
+      int GetContourStart(int)
+      int GetContourEnd(int)
+      int GetContourSize(int)
+      int GetX(int)
+      int GetY(int)
+      int GetPos(int)
+
+      int NO_HATCH
+      int DIAGONAL_FULL
+      int DIAGONAL_EDGE
+
+      --
+      AppendCorner(int x, int y)
 }
 
 class Pad  {
@@ -76,11 +126,14 @@ class Pad  {
 class Module {
 --
       string GetReference()
-      string GetValue()
+             string GetValue()
       Pad[] Pads()
       # elements of subsheets
       # will have similar paths
-      string GetPath)(
+      string GetPath()
+      # GraphicalItems actually returns EDGE_MODULES but those
+      # derive from DrawSegment
+      DrawSegment[] GraphicalItems()
 --
       SetPosition(pcbnew.wxPoint(x,y))
       SetOrientation(degrees*10.0)
