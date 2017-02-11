@@ -82,6 +82,7 @@ class DrawSegment {
       string GetLayerName()
       wxPoint GetStart()
       wxPoint GetEnd()
+      EDA_RECT GetBoundingBox()
       --
       SetStart(wxPoint)
       SetEnd(wxPoint)
@@ -167,6 +168,7 @@ class wxSize {
 }
 
 class EDA_RECT {
+      wxPoint Centre()
       int GetX()
       int GetY()
       int GetWidth()

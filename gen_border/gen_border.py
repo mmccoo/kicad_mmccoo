@@ -112,23 +112,23 @@ for pad in allpads:
         else:
             boardbbox.addPointBloatXY(pad.GetPosition(), pad.GetSize().x/2, pad.GetSize().y/2)
     elif (pad.GetShape() == pcbnew.PAD_SHAPE_CIRCLE):
-        boardbbox.addPointBloatXY(pad.GetPosition(), pad.GetSize().x, pad.GetSize().y)
+        boardbbox.addPointBloatXY(pad.GetPosition(), pad.GetSize().x/2, pad.GetSize().y/2)
         
     elif (pad.GetShape() == pcbnew.PAD_SHAPE_OVAL):
         boardbbox.addPointBloatXY(pad.GetPosition(), pad.GetSize().x/2, pad.GetSize().y/2)
     else:
         print("unknown pad shape {}({})".format(pad.GetShape(), padshapes[pad.GetShape()]))
 
+
 for mod in board.GetModules():
     #print("for mod {}".format(mod.GetReference()))
     #print("bbox is {}".format(str(boardbbox)))
     for gi in mod.GraphicalItems():
-        #print("gi on layer {} {}".format(gi.GetLayerName(), str(gi.GetStart())))
-        boardbbox.addPointBloatXY(gi.GetStart(), gi.GetWidth()/2, gi.GetWidth()/2)
-        boardbbox.addPointBloatXY(gi.GetEnd(),   gi.GetWidth()/2, gi.GetWidth()/2)
-
+        bbox = gi.GetBoundingBox()
+        boardbbox.addPointBloatXY(bbox.Centre(), bbox.GetWidth()/2, bbox.GetHeight()/2)
     
-print("bbox is {}".format(str(boardbbox)))
+
+
 
 for d in board.GetDrawings():
     print("{}".format(str(d)))
@@ -163,6 +163,7 @@ board.Add(seg1)
 seg1.SetStart(pcbnew.wxPoint(boardbbox.xh, boardbbox.yl))
 seg1.SetEnd(  pcbnew.wxPoint(boardbbox.xl, boardbbox.yl))
 seg1.SetLayer(edgecut)
+
 
 # from PolyLine.h
 # //
