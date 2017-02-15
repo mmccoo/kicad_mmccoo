@@ -17,6 +17,10 @@ class SheetInstance:
     def GetSheetChildId(child):
         path = child.GetPath().split('/')
         path.pop(0) # pop the empty head
+        # the path will be missing if you have modules added
+        # directly in pcbnew, not imported from eeschema netlist.
+        if (len(path) == 0):
+            return (None, None)
         sheetid = path[0]
         childid = "/".join(path[1:])
         return (sheetid, childid)
@@ -227,7 +231,7 @@ def place_instances(mainref, pitch):
 
 
             
-place_instances("Q1", (10, 0))
-place_instances("Q5", (10, 0))
+place_instances("Q1", (8, 0))
+place_instances("Q5", (8, 0))
             
 

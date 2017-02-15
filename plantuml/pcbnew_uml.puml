@@ -127,7 +127,7 @@ class Pad  {
 class Module {
 --
       string GetReference()
-             string GetValue()
+      string GetValue()
       Pad[] Pads()
       # elements of subsheets
       # will have similar paths

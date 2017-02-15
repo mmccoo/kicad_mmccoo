@@ -179,21 +179,24 @@ seg1.SetLayer(edgecut)
 # // of the area, subsequent ones are "holes" in the copper.
 
 nets = board.GetNetsByName()
-clknet = nets.find("/clk").value()[1]
-backlayer = layertable['B.Cu']
-newarea = board.InsertArea(clknet.GetNet(), 0, backlayer, boardbbox.xl, boardbbox.yl, pcbnew.CPolyLine.DIAGONAL_EDGE)
+for netname,layername in (("+5V", "B.Cu"), ("GND", "F.Cu")):
+    net = nets.find(netname).value()[1]
+    layer = layertable[layername]
+    newarea = board.InsertArea(net.GetNet(), 0, layer, boardbbox.xl, boardbbox.yl, pcbnew.CPolyLine.DIAGONAL_EDGE)
 
-newoutline = newarea.Outline()
-newoutline.AppendCorner(boardbbox.xl, boardbbox.yh);
-newoutline.AppendCorner(boardbbox.xh, boardbbox.yh);
-newoutline.AppendCorner(boardbbox.xh, boardbbox.yl);
-# this next line shouldn't really be necessary but without it, saving to
-# file will yield a file that won't load.
-newoutline.CloseLastContour()
+    newoutline = newarea.Outline()
+    newoutline.AppendCorner(boardbbox.xl, boardbbox.yh);
+    newoutline.AppendCorner(boardbbox.xh, boardbbox.yh);
+    newoutline.AppendCorner(boardbbox.xh, boardbbox.yl);
+    # this next line shouldn't really be necessary but without it, saving to
+    # file will yield a file that won't load.
+    newoutline.CloseLastContour()
 
-# don't know why this is necessary. When calling InsertArea above, DIAGONAL_EDGE was passed
-# If you save/restore, the zone will come back hatched.
-# before then, the zone boundary will just be a line.
-# Omit this if you are using pcbnew.CPolyLine.NO_HATCH
-newoutline.Hatch()
+    # don't know why this is necessary. When calling InsertArea above, DIAGONAL_EDGE was passed
+    # If you save/restore, the zone will come back hatched.
+    # before then, the zone boundary will just be a line.
+    # Omit this if you are using pcbnew.CPolyLine.NO_HATCH
+    newoutline.Hatch()
+
+    
 print("done")
