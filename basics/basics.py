@@ -119,6 +119,10 @@ if hasattr(pcbnew, 'PAD_SHAPE_ROUNDRECT'):
 
 modref = "U1"
 mod = board.FindModuleByReference(modref)
+if (mod == None):
+    print("you don't have a module named U1 which this script assumes is there.")
+    print("search for U1 in the script and change it to something you do have")
+    
 for pad in mod.Pads():
     print("pad {}({}) on {}({}) at {},{} shape {} size {},{}"
           .format(pad.GetPadName(),
