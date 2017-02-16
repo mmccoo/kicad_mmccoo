@@ -50,12 +50,31 @@ for netname, net in nets.items():
 # maybe you just want a single net
 # the find method returns an iterator to all matching nets.
 # the value of an iterator is a tuple: name, netinfo
-clknet = nets.find("/clk").value()[1]
-clkclass = clknet.GetNetClass()
+neti = nets.find("/clk")
+if (neti != nets.end()):
+  clknet = neti.value()[1]
+  clkclass = clknet.GetNetClass()
 
-print("net {} is on netclass {}".format(clknet.GetNetname(),
-                                        clkclass))
+  print("net {} is on netclass {}".format(clknet.GetNetname(),
+                                          clkclass))
+  
+  ########
+  # tracks
+  ########
 
+  # clk net was defined above as was SCALE
+  clktracks = board.TracksInNet(clknet.GetNet())
+  for track in clktracks:
+      print("{},{}->{},{} width {} layer {}".format(track.GetStart().x/SCALE,
+                                                    track.GetStart().y/SCALE,
+                                                    track.GetEnd().x/SCALE,
+                                                    track.GetEnd().y/SCALE,
+                                                    track.GetWidth()/SCALE,
+                                                    layertable[track.GetLayer()]))          
+else:
+  print("you don't have a net call clk. change the find('clk') to look for a net you do have")
+
+  
 #####################
 # physical dimensions
 #####################
@@ -124,18 +143,5 @@ for i in range(numlayers):
 
 
 
-########
-# tracks
-########
-
-# clk net was defined above as was SCALE
-clktracks = board.TracksInNet(clknet.GetNet())
-for track in clktracks:
-    print("{},{}->{},{} width {} layer {}".format(track.GetStart().x/SCALE,
-                                                  track.GetStart().y/SCALE,
-                                                  track.GetEnd().x/SCALE,
-                                                  track.GetEnd().y/SCALE,
-                                                  track.GetWidth()/SCALE,
-                                                  layertable[track.GetLayer()]))          
     
  
