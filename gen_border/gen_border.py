@@ -34,7 +34,15 @@ if hasattr(pcbnew, 'PAD_SHAPE_ROUNDRECT'):
 # generate a name->layer table so we can lookup layer numbers by name.
 layertable = {}
 
-numlayers = pcbnew.LAYER_ID_COUNT
+# if you get an error saying that PCB_LAYER_ID_COUNT doesn't exist, then
+# it's probably because you're on an older version of pcbnew.
+# the interface has changed a little (progress) it used to be called LAYER_ID_COUNT.
+# now it's called PCB_LAYER_ID_COUNT
+if hasattr(pcbnew, "LAYER_ID_COUNT"):
+    pcbnew.PCB_LAYER_ID_COUNT = pcbnew.LAYER_ID_COUNT
+
+
+numlayers = pcbnew.PCB_LAYER_ID_COUNT
 for i in range(numlayers):
     layertable[board.GetLayerName(i)] = i
     #print("{} {}".format(i, board.GetLayerName(i)))
@@ -131,11 +139,12 @@ for mod in board.GetModules():
 
 
 for d in board.GetDrawings():
-    print("{}".format(str(d)))
-    print("on layer {} {} {}".format(d.GetLayerName(),
-                                     str(d.GetStart()),
-                                     str(d.GetEnd())))
-    board.Remove(d)
+    #print("{}".format(str(d)))
+    #print("on layer {} {} {}".format(d.GetLayerName(),
+    #                                 str(d.GetStart()),
+    #                                 str(d.GetEnd())))
+    if (d.GetLayerName() == 'Edge.Cuts'):
+        board.Remove(d)
 
 
 edgecut = layertable['Edge.Cuts']
@@ -185,18 +194,23 @@ for netname,layername in (("+5V", "B.Cu"), ("GND", "F.Cu")):
     newarea = board.InsertArea(net.GetNet(), 0, layer, boardbbox.xl, boardbbox.yl, pcbnew.CPolyLine.DIAGONAL_EDGE)
 
     newoutline = newarea.Outline()
-    newoutline.AppendCorner(boardbbox.xl, boardbbox.yh);
-    newoutline.AppendCorner(boardbbox.xh, boardbbox.yh);
-    newoutline.AppendCorner(boardbbox.xh, boardbbox.yl);
+
+    # if you get a crash here, it's because you're on an older version of pcbnew.
+    # the data structs for polygons has changed a little. The old struct has a
+    # method called AppendCorner. Now it's just Append. Also, the call to CloseLastContour,
+    # commented below used to be needed to avoid a corrupt output file.
+    newoutline.Append(boardbbox.xl, boardbbox.yh);
+    newoutline.Append(boardbbox.xh, boardbbox.yh);
+    newoutline.Append(boardbbox.xh, boardbbox.yl);
     # this next line shouldn't really be necessary but without it, saving to
     # file will yield a file that won't load.
-    newoutline.CloseLastContour()
+    # newoutline.CloseLastContour()
 
     # don't know why this is necessary. When calling InsertArea above, DIAGONAL_EDGE was passed
     # If you save/restore, the zone will come back hatched.
     # before then, the zone boundary will just be a line.
     # Omit this if you are using pcbnew.CPolyLine.NO_HATCH
-    newoutline.Hatch()
+    newarea.Hatch()
 
     
 print("done")

@@ -1,4 +1,4 @@
-
+import pdb
 import pcbnew
 
 board = pcbnew.GetBoard()
@@ -6,7 +6,18 @@ board = pcbnew.GetBoard()
 # the internal coorinate space of pcbnew is 10E-6 mm. (a millionth of a mm)
 # the coordinate 121550000 corresponds to 121.550000 
 
-SCALE = 1000000.0
+SCALE = 1000000
+
+
+if hasattr(pcbnew, "LAYER_ID_COUNT"):
+    pcbnew.PCB_LAYER_ID_COUNT = pcbnew.LAYER_ID_COUNT
+
+def coordsFromPolySet(ps):
+    str = ps.Format()
+    lines = str.split('\n')
+    numpts = int(lines[2])
+    pts = [[int(n) for n in x.split(" ")] for x in lines[3:-2]] # -1 because of the extra two \n
+    return pts
 
 
 from collections import defaultdict
@@ -15,14 +26,22 @@ class SheetInstance:
     # "static" helper functions
     @staticmethod
     def GetSheetChildId(child):
+        global depth_of_array
         path = child.GetPath().split('/')
         path.pop(0) # pop the empty head
         # the path will be missing if you have modules added
         # directly in pcbnew, not imported from eeschema netlist.
         if (len(path) == 0):
             return (None, None)
-        sheetid = path[0]
-        childid = "/".join(path[1:])
+        # if there are multiple sheet heirarchies, where's the replication?
+        # does the top cell contain an arrayed child? or is the child of top
+        # arrayed.
+        # if you have a sheet heirarchy like this: /58DED9F1/58F8C609/58F8CB4E
+        # 58F8CB4E is the lowest child thing/package (ie not a sheet)
+        # 58DED9F1 is the top child
+        # 58F8C609 is the instance in the middle.
+        sheetid = "/".join(path[0:-1])
+        childid = "/".join(path[-1:])
         return (sheetid, childid)
 
     @staticmethod
@@ -146,8 +165,8 @@ def replicate_sheet_trackst(fromnet, tonet, offset):
             # need to add before SetNet will work, so just doing it first
             board.Add(newvia)
             toplayer=-1
-            bottomlayer=pcbnew.LAYER_ID_COUNT
-            for l in range(pcbnew.LAYER_ID_COUNT):
+            bottomlayer=pcbnew.PCB_LAYER_ID_COUNT
+            for l in range(pcbnew.PCB_LAYER_ID_COUNT):
                 if not track.IsOnLayer(l):
                     continue
                 toplayer = max(toplayer, l)
@@ -171,6 +190,31 @@ def replicate_sheet_trackst(fromnet, tonet, offset):
 
             newtrack.SetNet(tonet)
 
+    fromzones = []
+    tozones = []
+
+    for zoneid in range(board.GetAreaCount()):
+        zone = board.GetArea(zoneid)
+        if (zone.GetNet().GetNetname() == fromnet.GetNetname()):
+            fromzones.append(zone)
+            continue;
+        if (zone.GetNet().GetNetname() == tonet.GetNetname()):
+            tozones.append(zone)
+            continue;
+    for zone in tozones:
+        board.Remove(zone)
+
+    for zone in fromzones:
+        coords = coordsFromPolySet(zone.Outline())
+        #pdb.set_trace()
+        newzone = board.InsertArea(tonet.GetNet(), 0, zone.GetLayer(),
+                                   coords[0][0]+int(offset[0]), coords[0][1]+int(offset[1]),
+                                   pcbnew.CPolyLine.DIAGONAL_EDGE)
+        newoutline = newzone.Outline()
+        for pt in coords[1:]:
+            newoutline.Append(pt[0]+offset[0], pt[1]+offset[1])
+        newzone.Hatch()
+
 
 def place_instances(mainref, pitch):
     
@@ -181,7 +225,7 @@ def place_instances(mainref, pitch):
     sheetinstance = SheetInstance.GetSheetInstanceForModule(pivotmod)
     #peers = instances[pivotsheet]
 
-    print("getting for {}".format(pivotmod.GetReference()))
+    #print("getting for {}".format(pivotmod.GetReference()))
     arrayedsheets = sorted(SheetInstance.GetSheetInstances(pivotmod),
                            key = lambda elt: natural_sortkey(elt.getChildCorrespondingToModule(pivotmod).GetReference()))
     #replicasheets = sorted(children[pivotinstance], key=lambda elt: natural_sortkey(elt[2]))
@@ -193,7 +237,10 @@ def place_instances(mainref, pitch):
     basepositions = {}
     for mod in sheetinstance.getChildren():
         sheetid, childid = SheetInstance.GetSheetChildId(mod)
-        basepositions[childid] = (mod.GetPosition().x, mod.GetPosition().y, mod.GetOrientation())
+        basepositions[childid] = (mod.GetPosition().x,
+                                  mod.GetPosition().y,
+                                  mod.GetOrientation(),
+                                  mod.IsFlipped())  
 
     print("basepositions {}".format(str(basepositions)))
 
@@ -207,31 +254,42 @@ def place_instances(mainref, pitch):
 
     # we start with index=-instnum because we want the pivot module to stay where it is.
     for idx, si in enumerate(arrayedsheets, start=-instnum):
-        if idx == instnum:
+        #print("placing instance {} {}".format(idx, si.id))
+        if idx == 0:
             continue
 
-        #first mode the modules
-        for peer in si.getChildren():
+        #first move the modules
+        for peer in si.getChildren():            
             sheetid, childid = SheetInstance.GetSheetChildId(peer)
             newposition = basepositions[childid]
             newposition = (int(newposition[0] + idx*pitch[0]),
                            int(newposition[1] + idx*pitch[1]))
-            
+            #print("moving peer {} to {},{}".format(peer.GetReference(), newposition[0], newposition[1]))
+            if (peer.IsFlipped() != basepositions[childid][3]):
+                peer.Flip(peer.GetPosition())
+
             peer.SetPosition(pcbnew.wxPoint(*newposition))
             peer.SetOrientation(basepositions[childid][2])
 
         #copy the nets
         for fromnetid, fromnet in sheetinstance.internalnets.items():
             if fromnetid not in si.internalnets:
-                print("{} is missing from {}".format(fromnetid, ", ".join(si.internalnets.keys())))
-                
+                #print("{} is missing from {}\n".format(fromnetid, ", ".join(si.internalnets.keys())))
+                print("{} is missing\n".format(fromnetid))
+                continue
+        
             tonet = si.internalnets[fromnetid]
-            print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
+            #print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
             replicate_sheet_trackst(fromnet, tonet, (idx*pitch[0],idx*pitch[1]))
 
 
             
-place_instances("Q1", (8, 0))
-place_instances("Q5", (8, 0))
+place_instances("U7", (0, -45))
+place_instances("U71", (0, -45))
+
+#place_instances("Q1", (6.5, 0))
+#place_instances("Q5", (6.5, 0))
             
+pcbnew.Refresh();
+
 

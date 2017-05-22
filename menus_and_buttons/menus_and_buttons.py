@@ -15,7 +15,7 @@ print("running {} from {}".format(filename, path))
 
 def findPcbnewWindow():
     windows = wx.GetTopLevelWindows()
-    pcbnew = [w for w in windows if w.GetTitle() == "Pcbnew"]
+    pcbnew = [w for w in windows if w.GetTitle()[0:6] == "Pcbnew"]
     if len(pcbnew) != 1:
         raise Exception("Cannot find pcbnew window from title matching!")
     return pcbnew[0]
@@ -30,9 +30,10 @@ pcbwin = findPcbnewWindow()
 # 6039 is V_TOOLBAR, the right commands window. zoom to selection, highlight net.
 # 6040 is OPT_TOOLBAR, the left commands window. disable drc, hide grid, display polar
 
-# kicad/include/id.h needs to be added to pcbnew.i to expose this value and
-# do it right.     
-top_tb = pcbwin.FindWindowById(6038)
+# kicad/include/id.h has been added to pcbnew's interface. If you get the error
+# that ID_H_TOOLBAR doesn't exist, it's probably because you need to update your
+# version of kicad.
+top_tb = pcbwin.FindWindowById(pcbnew.ID_H_TOOLBAR)
 
 
 
