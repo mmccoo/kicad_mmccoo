@@ -19,46 +19,10 @@
 
 import pcbnew
 
-
-# c++ code has a nice struct with all of the colors, names, RGB
-# values. this doesn't seem to be exposed in a helpful way.
-# colorrefs = pcbnew.g_ColorRefs
+# if you get the error: importError: No module named svgwrite
+#    you need to do "pip install svgwrite" in an xterm
 
 
-# some of the color names are modified to match svr colors.
-# the real answer is to get the rgb values from colorrefs.
-colornames = {
-    pcbnew.BLACK:         'BLACK',         
-    pcbnew.DARKDARKGRAY:  'DARKSLATEGRAY', # 'DARKDARKGRAY',  
-    pcbnew.DARKGRAY:      'DARKGRAY',      
-    pcbnew.LIGHTGRAY:     'LIGHTGRAY',     
-    pcbnew.WHITE:         'WHITE',         
-    pcbnew.LIGHTYELLOW:   'LIGHTYELLOW',   
-    pcbnew.DARKBLUE:      'DARKBLUE',      
-    pcbnew.DARKGREEN:     'DARKGREEN',     
-    pcbnew.DARKCYAN:      'DARKCYAN',      
-    pcbnew.DARKRED:       'DARKRED',       
-    pcbnew.DARKMAGENTA:   'DARKMAGENTA',   
-    pcbnew.DARKBROWN:     'MAROON', # 'DARKBROWN',     
-    pcbnew.BLUE:          'BLUE',          
-    pcbnew.GREEN:         'GREEN',         
-    pcbnew.CYAN:          'CYAN',          
-    pcbnew.RED:           'RED',           
-    pcbnew.MAGENTA:       'MAGENTA',       
-    pcbnew.BROWN:         'BROWN',         
-    pcbnew.LIGHTBLUE:     'LIGHTBLUE',     
-    pcbnew.LIGHTGREEN:    'LIGHTGREEN',    
-    pcbnew.LIGHTCYAN:     'LIGHTCYAN',     
-    pcbnew.LIGHTRED:      'INDIANRED',  # 'LIGHTRED',      
-    pcbnew.LIGHTMAGENTA:  'LIGHTPINK',  # 'LIGHTMAGENTA',  
-    pcbnew.YELLOW:        'YELLOW',        
-    pcbnew.PUREBLUE:      'MEDIUMBLUE', # 'PUREBLUE',      
-    pcbnew.PUREGREEN:     'LAWNGREEN',  # 'PUREGREEN',     
-    pcbnew.PURECYAN:      'DARKTURQUOISE', # 'PURECYAN',      
-    pcbnew.PURERED:       'FIREBRICK',  # 'PURERED',       
-    pcbnew.PUREMAGENTA:   'DARKORCHID', # PUREMAGENTA',   
-    pcbnew.PUREYELLOW:    'KHAKI',      # PUREYELLOW'     
-}
 
 padshapes = {
     pcbnew.PAD_SHAPE_CIRCLE:  "PAD_SHAPE_CIRCLE",
@@ -79,7 +43,6 @@ boardxl = boardbbox.GetX()
 boardyl = boardbbox.GetY()
 boardwidth = boardbbox.GetWidth()
 boardheight = boardbbox.GetHeight()
-
 
 # coordinate space of kicad_pcb is in mm. At the beginning of
 # https://en.wikibooks.org/wiki/Kicad/file_formats#Board_File_Format
@@ -109,9 +72,14 @@ background.add(dwg.rect(insert=(boardxl, boardyl), size=(boardwidth, boardheight
 
 
 svglayers = {}
-for colorcode, colorname in colornames.items():
-    layer = dwg.add(dwg.g(id='layer_'+colorname, stroke=colorname.lower(), stroke_linecap="round"))
-    svglayers[colorcode] = layer
+colors = board.Colors()
+for layerid in range(pcbnew.PCB_LAYER_ID_COUNT):
+    c4 = colors.GetLayerColor(layerid);
+    colorrgb = "rgb({:d}, {:d}, {:d})".format(int(round(c4.r*255)),
+                                              int(round(c4.g*255)),
+                                              int(round(c4.b*255)));
+    layer = dwg.add(dwg.g(id='layer_'+str(layerid), stroke=colorrgb, stroke_linecap="round"))
+    svglayers[layerid] = layer
 
 alltracks = board.GetTracks() 
 for track in alltracks:
@@ -121,12 +89,11 @@ for track in alltracks:
     #                                               track.GetWidth()/SCALE,
     #                                               track.GetLayer())          
     # )
-    layercolor = board.GetLayerColor(track.GetLayer())
-    svglayers[layercolor].add(dwg.line(start=(track.GetStart().x,
-                                              track.GetStart().y),
-                                       end=(track.GetEnd().x,
-                                            track.GetEnd().y),
-                                       stroke_width=track.GetWidth()
+    svglayers[track.GetLayer()].add(dwg.line(start=(track.GetStart().x,
+                                                    track.GetStart().y),
+                                             end=(track.GetEnd().x,
+                                                  track.GetEnd().y),
+                                             stroke_width=track.GetWidth()
     ))
 
 
