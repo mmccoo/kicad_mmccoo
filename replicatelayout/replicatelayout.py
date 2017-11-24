@@ -19,6 +19,16 @@ def coordsFromPolySet(ps):
     pts = [[int(n) for n in x.split(" ")] for x in lines[3:-2]] # -1 because of the extra two \n
     return pts
 
+def padsForNet(net):
+    retval = []
+    for pad in board.GetPads():
+        # first get the netinfo, then get the netcode (int)
+        if pad.GetNet().GetNet() == net:
+            retval.append(pad)
+
+    #for pad in retval:
+    #    print("pad {} connected to {}".format(pad.GetName(), board.GetNetsByNetcode()[net].GetNetname()));
+    return retval
 
 from collections import defaultdict
 class SheetInstance:
@@ -47,7 +57,7 @@ class SheetInstance:
     @staticmethod
     def GetNetCanonical(net):
         pads = []
-        for pad in net.Pads():
+        for pad in padsForNet(net.GetNet()):
             sheetid, childid = SheetInstance.GetSheetChildId(pad.GetParent())
             pads.append((childid, pad.GetPadName()))
         pads.sort()
@@ -60,7 +70,7 @@ class SheetInstance:
     def NetIsSheetInternal(net):
         commonsheet = None
         #print("for net " + net.GetNetname())
-        for pad in net.Pads():
+        for pad in padsForNet(net.GetNet()):
             mod = pad.GetParent()
             sheetid, childid = SheetInstance.GetSheetChildId(mod)
             #print("  sheet {} child {} {}:{}".format(sheetid, str(childid), mod.GetReference(), pad.GetPadName()))
@@ -279,17 +289,19 @@ def place_instances(mainref, pitch):
                 continue
         
             tonet = si.internalnets[fromnetid]
-            #print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
+            print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
             replicate_sheet_trackst(fromnet, tonet, (idx*pitch[0],idx*pitch[1]))
 
 
             
-place_instances("U7", (0, -45))
-place_instances("U71", (0, -45))
+#place_instances("U7", (0, -45))
+#place_instances("U71", (0, -45))
 
-#place_instances("Q1", (6.5, 0))
-#place_instances("Q5", (6.5, 0))
-            
+place_instances("Q1", (6.5, 0))
+place_instances("Q5", (6.5, 0))
+
+board.BuildConnectivity()
+
 pcbnew.Refresh();
 
 
