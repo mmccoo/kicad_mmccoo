@@ -148,9 +148,7 @@ class SheetInstance:
 
 
 
-    
 SheetInstance.RegisterModulesAndNets(board)
-
 
 # this trick came from here: http://stackoverflow.com/a/2669158
 import re
@@ -222,7 +220,7 @@ def replicate_sheet_trackst(fromnet, tonet, offset):
                                    pcbnew.CPolyLine.DIAGONAL_EDGE)
         newoutline = newzone.Outline()
         for pt in coords[1:]:
-            newoutline.Append(pt[0]+offset[0], pt[1]+offset[1])
+            newoutline.Append(int(pt[0]+offset[0]), int(pt[1]+offset[1]))
         newzone.Hatch()
 
 
@@ -289,7 +287,7 @@ def place_instances(mainref, pitch):
                 continue
         
             tonet = si.internalnets[fromnetid]
-            print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
+            #print("copying net {} to {}".format(fromnet.GetNetname(), tonet.GetNetname()))
             replicate_sheet_trackst(fromnet, tonet, (idx*pitch[0],idx*pitch[1]))
 
 
@@ -297,9 +295,12 @@ def place_instances(mainref, pitch):
 #place_instances("U7", (0, -45))
 #place_instances("U71", (0, -45))
 
-place_instances("Q1", (6.5, 0))
-place_instances("Q5", (6.5, 0))
+place_instances("J8", (30, 0))
+place_instances("U7", (30, 0))
 
+# In the future, this build connectivity call will not be neccessary.
+# I have submitted a patch to include this in the code for Refresh.
+# You'll know you needed it if pcbnew crashes without it.
 board.BuildConnectivity()
 
 pcbnew.Refresh();
