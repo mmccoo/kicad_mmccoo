@@ -188,7 +188,20 @@ seg1.SetLayer(edgecut)
 # // of the area, subsequent ones are "holes" in the copper.
 
 nets = board.GetNetsByName()
-for netname,layername in (("+5V", "B.Cu"), ("GND", "F.Cu")):
+
+powernets = []
+for name in ["+12V", "+5V"]:
+    if (nets.has_key(name)):
+        powernets.append((name, "B.Cu"))
+        break
+
+for name in ["GND"]:
+    if (nets.has_key(name)):
+        powernets.append((name, "F.Cu"))
+        break
+
+
+for netname,layername in (powernets):
     net = nets.find(netname).value()[1]
     layer = layertable[layername]
     newarea = board.InsertArea(net.GetNet(), 0, layer, boardbbox.xl, boardbbox.yl, pcbnew.CPolyLine.DIAGONAL_EDGE)
@@ -212,5 +225,11 @@ for netname,layername in (("+5V", "B.Cu"), ("GND", "F.Cu")):
     # Omit this if you are using pcbnew.CPolyLine.NO_HATCH
     newarea.Hatch()
 
-    
+
+# In the future, this build connectivity call will not be neccessary.
+# I have submitted a patch to include this in the code for Refresh.
+# You'll know you needed it if pcbnew crashes without it.
+board.BuildConnectivity()
+
+pcbnew.Refresh()
 print("done")
