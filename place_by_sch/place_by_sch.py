@@ -39,17 +39,19 @@ def PlaceBySch():
     endcomp_p = re.compile('\$EndComp')
     comp_label_p = re.compile('L (\S+) (\S+)')
     trans_p = re.compile('\t([\-0-9]+)\s+([\-0-9]+)\s+([\-0-9]+)\s+([\-0-9]+)')
-    footprint_p = re.compile('F 2 "(\S+)" H (\d+) (\d+)')
+    footprint_p = re.compile('F 2 "(\S+)" [VH] (\d+) (\d+)')
 
     c1 = '$Comp'
     l1 = 'L Device:LED D49'
     t0   = '	1    0    0    -1'
     t180 = '	-1   0    0    1'
+    t180f = '	-1   0    0    -1' # this is flipped horizontally
     tM90 = '	0    1    1    0'
     t90  = '	0    -1   -1   0'
     orientations = {
         str(trans_p.match(t0).groups()): 0,
         str(trans_p.match(t180).groups()): 180,
+        str(trans_p.match(t180f).groups()): 180,
         str(trans_p.match(tM90).groups()): -90,
         str(trans_p.match(t90).groups()): 90
     }

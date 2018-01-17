@@ -57,7 +57,7 @@ class SVGShape:
 # class. I don't really like the way I did that. It's not good coding. 
 class SVGPath:
     def get_float(self):
-        m = re.match("(-?[0-9]+(\.[0-9]*)?)", self.d)
+        m = re.match("(-?[0-9]+(\.[0-9]*)?([eE]\-?[0-9]+)?)", self.d)
         if (not m):
             raise ValueError("expecting number, got {}".format(self.d))
 
