@@ -46,9 +46,12 @@ def bulge2arc(p1, p2, bulge):
     r = math.hypot(p2[0]-p1[0], p2[1]-p1[1]) / 2.0 / np.sin(a)
     c = polar(p1, np.pi/2.0-a + angle(p1, p2), r)
 
-    if (bulge<0):
-        return (c, np.rad2deg(angle(c, p2)), np.rad2deg(angle(c, p1)), np.absolute(r))
-    else:
-        return (c, np.rad2deg(angle(c, p1)), np.rad2deg(angle(c, p2)), np.absolute(r))
+    # in the code I stole above, the start and end angles are reversed
+    # if bulge is negative. Even from reading the comments on that page,
+    # I don't see why that is done.
+    #if (bulge<0):
+    #    return (c, np.rad2deg(angle(c, p2)), np.rad2deg(angle(c, p1)), np.absolute(r))
+    #else:
+    return (c, np.rad2deg(angle(c, p1)), np.rad2deg(angle(c, p2)), np.absolute(r))
         
 #print(bulge2arc((0,10), (10,0), .5))
