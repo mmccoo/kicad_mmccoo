@@ -27,8 +27,8 @@ class pcbpoint:
             self.y = x.y
         elif (isinstance(x, pcbnew.wxPoint)):
             # later, when I get a wxpoint, I'll put the origin back
-            self.x = x.x-self.origin[0]
-            self.y = self.origin[1]-x.y
+            self.x = x.x - self.origin[0]*self.SCALE
+            self.y = self.origin[1]*self.SCALE - x.y
         elif (type(x) == tuple):
             self.x = int(scale*x[0])
             self.y = int(scale*x[1])
@@ -41,20 +41,32 @@ class pcbpoint:
             
     def wxpoint(self):
         # y is minus because y increases going down the canvase
-        return pcbnew.wxPoint(self.origin[0]+self.x,
-                              self.origin[1]-self.y)
+        return pcbnew.wxPoint(self.origin[0]*self.SCALE+self.x,
+                              self.origin[1]*self.SCALE-self.y)
 
     def polar(self, radius, angle):
         return pcbpoint(self.x + self.SCALE*radius*math.cos(math.radians(angle)),
                         self.y + self.SCALE*radius*math.sin(math.radians(angle)),
                         noscale=True
         )
-        
+
+    def angle(self, other):
+        return math.degrees(math.atan2(other.y-self.y, other.x-self.x))
+    
     def __add__(self, other):
         return pcbpoint(self.x+other.x, self.y+other.y, noscale=True)
 
     def __str__(self):
-        return "({},{})".format(self.x, self.y)
+        return "({},{})".format(self.x/self.SCALE, self.y/self.SCALE)
+
+    def __iter__(self):
+        for i in range(2):
+            if (i == 0):
+                yield self.x
+            elif (i == 1):
+                yield self.y
+            else:
+                raise KeyError
 
     def distance(self, other):
         return math.sqrt(float(self.x-other.x)**2+

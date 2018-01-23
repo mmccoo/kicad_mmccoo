@@ -160,7 +160,88 @@ class mounting_actions(graphic_actions):
         mod = io.FootprintLoad(fp[0], fp[1])
         mod.SetPosition(pcbpoint.pcbpoint(center).wxpoint())
         self.board.Add(mod)
+
+
+# http://www.ariel.com.au/a/python-point-int-poly.html
+# determine if a point is inside a given polygon or not
+# Polygon is a list of (x,y) pairs.
+def point_inside_polygon(x,y,poly):
+
+    n = len(poly)
+    inside =False
+
+    p1x,p1y = poly[0]
+    for i in range(n+1):
+        p2x,p2y = poly[i % n]
+        if y > min(p1y,p2y):
+            if y <= max(p1y,p2y):
+                if x <= max(p1x,p2x):
+                    if p1y != p2y:
+                        xinters = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x,p1y = p2x,p2y
+
+    return inside
+
+
+def longest_angle_for_polygon(poly):
+    prevpt = poly[-1]
+    length = None
+    retval = None
+    for pt in poly:
+        d = prevpt.distance(pt)
+        if (length and (length>d)):
+            prevpt = pt
+            continue
+        length = d
+        retval = prevpt.angle(pt)
+        prevpt = pt
+    return retval
+
+
+def center_for_polygon(poly):
+    # based on this:
+    # https://en.wikipedia.org/wiki/Centroid#Centroid_of_a_polygon
+
+    prev = poly[-1]
+    x = 0.0
+    y = 0.0
+    area = 0.0
+    for cur in poly:
+        x = x + (prev.x+cur.x)*(prev.x*cur.y - cur.x*prev.y)
+        y = y + (prev.y+cur.y)*(prev.x*cur.y - cur.x*prev.y)
+        area = area + prev.x*cur.y - cur.x*prev.y
+        prev = cur
+
+    area =  area/2.0
+
+    x = x/6.0/area
+    y = y/6.0/area
+
+    return pcbpoint.pcbpoint(x,y,noscale=True)
     
+class orient_actions(graphic_actions):
+    def __init__(self, board, modname, print_unhandled=False):
+        graphic_actions.__init__(self, print_unhandled)
+        self.board = board
+        self.modname = modname
+        
+    # I only care about poly because I want directionality (which a cirle doesn't have)
+    # and I want to check for enclosing (which doesn't make sense for line, arc
+    def poly_action(self, points):
+        for mod in board.GetModules():
+            modname = mod.GetFPID().GetLibItemName().c_str()
+            if (modname != "LED_5730"):
+                continue
+            pos = pcbpoint.pcbpoint(mod.GetPosition())
+            inside = point_inside_polygon(pos.x, pos.y, points)
+            if (not inside):
+                continue
+            angle = longest_angle_for_polygon(points)
+            mod.SetOrientation(angle*10)
+            mod.SetPosition(center_for_polygon(points).wxpoint())
+            
 class myarc:
     def __init__(self, center, radius, start_angle, end_angle):
         self.center = center = pcbpoint.pcbpoint(center)
@@ -342,10 +423,11 @@ def traverse_dxf(filepath, actions,
             if (merge_polys):
                 merge_elts.append(myline(e.start, e.end))
             else:
-                actions.line_action(e.start, e.end)
+                actions.line_action(pcbpoint.pcbpoint(e.start),
+                                    pcbpoint.pcbpoint(e.end))
             
         elif(e.dxftype == "CIRCLE"):
-            actions.circle_action(e.center, e.radius)
+            actions.circle_action(pcbpoint.pcbpoint(e.center), e.radius)
             
         elif(e.dxftype == "ARC"):
             if (merge_polys):
@@ -353,7 +435,7 @@ def traverse_dxf(filepath, actions,
                 continue
 
             if (not break_curves):
-                actions.arc_action(e.center, e.radius, e.start_angle, e.end_angle)
+                actions.arc_action(pcbpoint.pcbpoint(e.center), e.radius, e.start_angle, e.end_angle)
                 continue
 
             pts = break_curve(e.center, e.radius, e.start_angle, e.end_angle)
@@ -366,7 +448,7 @@ def traverse_dxf(filepath, actions,
             pts = e.points
             if (break_curves):
                 pts = break_bulges(e)
-            actions.poly_action(pts)
+            actions.poly_action([pcbpoint.pcbpoint(p) for p in pts])
 
     if (not merge_polys):
         return
@@ -439,7 +521,7 @@ def traverse_graphics(board, layer, actions,
                 prevpt = pt
 
         elif (d.GetShape() == pcbnew.S_POLYGON):
-            pts = d.GetPolyPoints()
+            pts = [pcbpoint.pcbpoint(p) for p in d.GetPolyPoints()]
             actions.poly_action(pts)
 
     if (not merge_polys):
@@ -532,7 +614,7 @@ if (0):
                  merge_polys=True,
                  break_curves=True)
 
-if (1):
+if (0):
     traverse_graphics(board, "B.SilkS",
                       segment_actions(board, layertable['Cmts.User']),
                       merge_polys=True,
@@ -547,6 +629,18 @@ if (0):
     )
 
 
+
+if (1):
+    if (1):
+        traverse_graphics(board, 'Cmts.User',
+                 orient_actions(board, "LED_5730"),
+                 merge_polys=True,
+                 break_curves=True)
+    else:
+        traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
+                     orient_actions(board, "LED_5730"),
+                     merge_polys=True,
+                     break_curves=True)
     
 pcbnew.Refresh()
 
