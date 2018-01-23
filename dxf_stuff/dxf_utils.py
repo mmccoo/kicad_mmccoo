@@ -226,7 +226,7 @@ def merge_arcs_and_lines(elts):
             if mydist(e1, e2)<thresh:
                 e1.other.add(e2)
                 e2.other.add(e1)
-
+                
     # this needs some work. if I have a line that connects to a poly,
     # I want to first lose that line and only then break triple connections.
     for e in elts:
@@ -417,12 +417,11 @@ def traverse_graphics(board, layer, actions,
             if (merge_polys):
                 merge_elts.append(myarc(d.GetCenter(),
                                         d.GetRadius()/SCALE,
-                                        d.GetArcAngleStart()/10.0,
-                                        (d.GetArcAngleStart()+d.GetAngle())/10.0))
+                                        -d.GetArcAngleStart()/10.0,
+                                        -(d.GetArcAngleStart()+d.GetAngle())/10.0))
                 continue
 
             if (not break_curves):
-                pdb.set_trace()
                 # negative angles because kicad's y axis goes down.
                 actions.arc_action(d.GetCenter(),
                                    d.GetRadius()/SCALE,                                   
@@ -432,8 +431,8 @@ def traverse_graphics(board, layer, actions,
 
             pts = break_curve(d.GetCenter(),
                               d.GetRadius()/SCALE,
-                              d.GetArcAngleStart()/10.0,
-                              (d.GetArcAngleStart()+d.GetAngle())/10.0)
+                              -d.GetArcAngleStart()/10.0,
+                              -(d.GetArcAngleStart()+d.GetAngle())/10.0)
             prevpt = pts.pop(0)
             for pt in pts:
                 actions.line_action(prevpt, pt)
@@ -533,11 +532,21 @@ if (0):
                  merge_polys=True,
                  break_curves=True)
 
+if (1):
+    traverse_graphics(board, "B.SilkS",
+                      segment_actions(board, layertable['Cmts.User']),
+                      merge_polys=True,
+                      break_curves=True)
 
-traverse_graphics(board, "B.SilkS",
-                  segment_actions(board, layertable['Cmts.User']),
-                  merge_polys=False,
-                  break_curves=False)
 
+if (0):
+    traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
+                 segment_actions(board, layertable['B.SilkS']),
+                 merge_polys=False,
+                 break_curves=True
+    )
+
+
+    
 pcbnew.Refresh()
 

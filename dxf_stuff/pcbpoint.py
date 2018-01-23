@@ -57,7 +57,8 @@ class pcbpoint:
         return "({},{})".format(self.x, self.y)
 
     def distance(self, other):
-        return math.sqrt(float(self.x-other.x)**2+float(self.y-other.y)**2)
+        return math.sqrt(float(self.x-other.x)**2+
+                         float(self.y-other.y)**2)/self.SCALE
     
 # p1 = pcbpoint(10,10)
 # print("double {}".format(p1+p1))
