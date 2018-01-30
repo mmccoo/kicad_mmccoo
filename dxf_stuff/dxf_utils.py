@@ -239,6 +239,8 @@ class orient_actions(graphic_actions):
             if (not inside):
                 continue
             angle = longest_angle_for_polygon(points)
+            if (angle>0):
+                angle = angle - 180.0
             mod.SetOrientation(angle*10)
             mod.SetPosition(center_for_polygon(points).wxpoint())
             
@@ -573,6 +575,30 @@ for s in filter(lambda s: re.match("S_.*", s), dir(pcbnew)):
 #             graphic_actions(True),
 #             merge_polys=True)
 
+
+if (0):
+    traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
+                 segment_actions(board, layertable['Cmts.User']),
+                 merge_polys=True,
+                 break_curves=True)
+
+
+if (0):
+    if (1):
+        traverse_graphics(board, 'Cmts.User',
+                 orient_actions(board, "LED_5730"),
+                 merge_polys=True,
+                 break_curves=True)
+    else:
+        traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
+                     orient_actions(board, "LED_5730"),
+                     merge_polys=True,
+                     break_curves=True)
+
+
+
+    
+
 if (0):
     traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
                  segment_actions(board, layertable['Eco1.User']),
@@ -597,6 +623,12 @@ if (0):
     )
 
 
+if (0):
+    traverse_dxf("/bubba/electronicsDS/fusion/boundary.dxf",
+                 segment_actions(board, layertable['Edge.Cuts']),
+                 merge_polys=False,
+                 break_curves=False)
+
 footprint_lib = '/home/mmccoo/kicad/kicad-footprints/MountingHole.pretty'
 
 footprint_mapping = {
@@ -608,11 +640,6 @@ if (0):
                  mounting_actions(board, footprint_mapping))
 
 
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
-                 segment_actions(board, layertable['Cmts.User']),
-                 merge_polys=True,
-                 break_curves=True)
 
 if (0):
     traverse_graphics(board, "B.SilkS",
@@ -629,18 +656,6 @@ if (0):
     )
 
 
-
-if (1):
-    if (1):
-        traverse_graphics(board, 'Cmts.User',
-                 orient_actions(board, "LED_5730"),
-                 merge_polys=True,
-                 break_curves=True)
-    else:
-        traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
-                     orient_actions(board, "LED_5730"),
-                     merge_polys=True,
-                     break_curves=True)
     
 pcbnew.Refresh()
 
