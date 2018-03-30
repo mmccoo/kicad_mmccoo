@@ -32,7 +32,7 @@ def PlaceBySch():
     # F 2 "Miles:LED_5730" H 6650 1500 50  0001 C CNN
     # F 3 "~" H 6650 1500 50  0001 C CNN
     # 	1    6650 1500
-    # 	1    0    0    -1  
+    # 	1    0    0    -1
     # $EndComp
 
     newcomp_p = re.compile('\$Comp')
@@ -118,5 +118,5 @@ def PlaceBySch():
         mod.SetOrientation(locs[ref][2]*10)
         print("placing {} at {},{}".format(ref, newx, newy))
 
-
-    pcbnew.Refresh();
+    # when running as a plugin, this isn't needed. it's done for you
+    #pcbnew.Refresh();

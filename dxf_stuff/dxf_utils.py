@@ -4,12 +4,8 @@ import numpy as np
 import sys, os.path, inspect
 import re
 import pcbnew
-oldpath = sys.path
-# inspect.stack()[0][1] is the full path to the current file.
-sys.path.insert(0, os.path.dirname(inspect.stack()[0][1]))
 import bulge
 import pcbpoint
-sys.path = oldpath
 
 from sets import Set
 import pdb
@@ -23,7 +19,7 @@ arc_line_length = 5.0
 # I mostly depend on pcbpoint to deal with scaling issues. For radius below,
 # still need to scale.
 # the internal coorinate space of pcbnew is 10E-6 mm. (a millionth of a mm)
-# the coordinate 121550000 corresponds to 121.550000 
+# the coordinate 121550000 corresponds to 121.550000
 SCALE = 1000000.0
 
 
@@ -70,7 +66,7 @@ class segment_actions(graphic_actions):
         self.layer = layer
 
     def make_basic_seg(self):
-        seg = pcbnew.DRAWSEGMENT(board)
+        seg = pcbnew.DRAWSEGMENT(self.board)
         seg.SetLayer(self.layer)
         seg.SetShape(pcbnew.S_SEGMENT)
         self.board.Add(seg)
@@ -92,14 +88,14 @@ class segment_actions(graphic_actions):
         seg.SetEnd((pcbpoint.pcbpoint(center)+
                     pcbpoint.pcbpoint(radius, 0)).wxpoint()
         )
-        
+
     def arc_action(self, center, radius, start_angle, end_angle):
         # dxf arcs are different from pcbnew arcs
         # dxf arcs have a center point, radius and start/stop angles
         # pcbnew arcs have a center pointer, radius, and a start point,
         # angle (counter clockwise)
         seg = self.make_basic_seg()
-        
+
         center, angle, arcstart = self.dxfarc2pcbarc(pcbpoint.pcbpoint(center),
                                                      radius,
                                                      start_angle,
@@ -145,20 +141,31 @@ class zone_actions(graphic_actions):
 
 class mounting_actions(graphic_actions):
 
-    def __init__(self, board, footprint_mapping, print_unhandled=False):
+    def __init__(self, board, footprint_mapping,
+                 flip=False,
+                 clearance=None,
+                 print_unhandled=False):
         graphic_actions.__init__(self, print_unhandled)
 
         self.footprint_mapping = footprint_mapping
         self.board = board
-        
+        self.flip = flip
+        self.clearance = clearance
+
     def circle_action(self, center, radius):
         d = str(radius*2)
         if d not in self.footprint_mapping:
-                raise ValueError("diameter {} not found in footprint mapping".format(d))
+                print("diameter {} not found in footprint mapping".format(d))
+                return
         fp = self.footprint_mapping[d]
         io = pcbnew.PCB_IO()
         mod = io.FootprintLoad(fp[0], fp[1])
         mod.SetPosition(pcbpoint.pcbpoint(center).wxpoint())
+        if (self.flip):
+            mod.Flip(pcbpoint.pcbpoint(center).wxpoint())
+        if (self.clearance != None):
+            for pad in mod.Pads():
+                pad.SetLocalClearance(self.clearance)
         self.board.Add(mod)
 
 
@@ -220,17 +227,17 @@ def center_for_polygon(poly):
     y = y/6.0/area
 
     return pcbpoint.pcbpoint(x,y,noscale=True)
-    
+
 class orient_actions(graphic_actions):
     def __init__(self, board, modname, print_unhandled=False):
         graphic_actions.__init__(self, print_unhandled)
         self.board = board
         self.modname = modname
-        
+
     # I only care about poly because I want directionality (which a cirle doesn't have)
     # and I want to check for enclosing (which doesn't make sense for line, arc
     def poly_action(self, points):
-        for mod in board.GetModules():
+        for mod in self.board.GetModules():
             modname = mod.GetFPID().GetLibItemName().c_str()
             if (modname != "LED_5730"):
                 continue
@@ -243,7 +250,7 @@ class orient_actions(graphic_actions):
                 angle = angle - 180.0
             mod.SetOrientation(angle*10)
             mod.SetPosition(center_for_polygon(points).wxpoint())
-            
+
 class myarc:
     def __init__(self, center, radius, start_angle, end_angle):
         self.center = center = pcbpoint.pcbpoint(center)
@@ -258,10 +265,10 @@ class myarc:
     def reverse(self):
         self.start_angle, self.end_angle = (self.end_angle, self.start_angle)
         self.start_point, self.end_point = (self.end_point, self.start_point)
-        
+
     def __str__(self):
         return "arc c{} r{} {},{} {},{}".format(self.center, self.radius, self.start_angle, self.end_angle, self.start_point, self.end_point)
-        
+
 class myline:
     def __init__(self, start_point, end_point):
         self.start_point = pcbpoint.pcbpoint(start_point)
@@ -270,11 +277,11 @@ class myline:
 
     def reverse(self):
         self.start_point, self.end_point = (self.end_point, self.start_point)
-        
+
     def __str__(self):
         return "line {} {}".format(self.start_point, self.end_point)
 
-    
+
 def mydist(o1, o2):
     return min(o1.start_point.distance(o2.start_point),
                o1.start_point.distance(o2.end_point),
@@ -294,9 +301,9 @@ def remove_non_duals(e):
     others = e.other
     e.other = Set()
     for other in others:
-        other.other.remove(e)        
+        other.other.remove(e)
         remove_non_duals(other)
-    
+
 def merge_arcs_and_lines(elts):
 
 
@@ -309,7 +316,7 @@ def merge_arcs_and_lines(elts):
             if mydist(e1, e2)<thresh:
                 e1.other.add(e2)
                 e2.other.add(e1)
-                
+
     # this needs some work. if I have a line that connects to a poly,
     # I want to first lose that line and only then break triple connections.
     for e in elts:
@@ -319,7 +326,7 @@ def merge_arcs_and_lines(elts):
     for e in elts:
         remove_non_duals(e)
 
-        
+
     merged = []
     for e in elts:
         if (len(e.other) != 2):
@@ -330,7 +337,7 @@ def merge_arcs_and_lines(elts):
         other = e.other.pop()
 
         other.other.remove(e)
-                
+
         while (other):
             if (other == e):
                 break
@@ -357,7 +364,7 @@ def merge_arcs_and_lines(elts):
                 m.reverse()
             if (m.start_point.distance(prev.end_point) > thresh):
                 raise ValueError("expecting the start and end to match here {} {}".format(prev, m))
-            
+
             prev = m
 
         merged.append(members)
@@ -368,20 +375,22 @@ def break_curve(center, radius, start_angle, end_angle):
     retpts = []
 
     center = pcbpoint.pcbpoint(center)
-    
+
     # in this file, I generally use degrees (kicad uses degrees),
     # in this function, radians more convenient.
-    start_angle, end_angle = (np.deg2rad(start_angle), np.deg2rad(end_angle))
+    start_radians, end_radians = (np.deg2rad(start_angle), np.deg2rad(end_angle))
 
     # the circumference of a cirle is 2*pi*radius
-    circ = np.abs(end_angle-start_angle)*radius
-    num_segs = int(np.ceil(circ/arc_line_length))
-    incr_angle = (end_angle-start_angle)/num_segs
+    circ = np.abs(end_radians-start_radians)*radius
+
+    num_segs = int(np.max((np.ceil(circ/arc_line_length),
+                           np.ceil(np.abs(end_angle-start_angle)/15.0))))
+    incr_radians = (end_radians-start_radians)/num_segs
 
     for i in range(num_segs+1):
-        angle = start_angle + incr_angle*i
-        retpts.append(center.polar(radius, np.rad2deg(angle)))
-    
+        radians = start_radians + incr_radians*i
+        retpts.append(center.polar(radius, np.rad2deg(radians)))
+
     return retpts
 
 # unlike the other functions where I just pass generic attributes, (center, radius...)
@@ -404,6 +413,7 @@ def break_bulges(e):
 
         # the angles are negative because pcbnew coodinates are flipped over the x axis
         center, start_angle, end_angle, radius = bulge.bulge2arc(prevpt, pt, curbulge)
+
         arcpts = break_curve(center, radius, start_angle, end_angle)
         # remove the first point because we don't want repeats in this poly
         arcpts.pop(0)
@@ -413,7 +423,7 @@ def break_bulges(e):
         curbulge = nextbulge
 
     return retpts
-        
+
 def traverse_dxf(filepath, actions,
                  merge_polys=False,
                  break_curves=False):
@@ -427,10 +437,10 @@ def traverse_dxf(filepath, actions,
             else:
                 actions.line_action(pcbpoint.pcbpoint(e.start),
                                     pcbpoint.pcbpoint(e.end))
-            
+
         elif(e.dxftype == "CIRCLE"):
             actions.circle_action(pcbpoint.pcbpoint(e.center), e.radius)
-            
+
         elif(e.dxftype == "ARC"):
             if (merge_polys):
                 merge_elts.append(myarc(e.center, e.radius, e.start_angle, e.end_angle))
@@ -450,16 +460,27 @@ def traverse_dxf(filepath, actions,
             pts = e.points
             if (break_curves):
                 pts = break_bulges(e)
-            actions.poly_action([pcbpoint.pcbpoint(p) for p in pts])
+            if (merge_polys):
+                # if we're asking polygons to be merged, we just leave
+                # existing polys as they are.
+                actions.poly_action([pcbpoint.pcbpoint(p) for p in pts])
+            else:
+                # otherwise, I will un-merge polys
+                prevpt = pcbpoint.pcbpoint(pts[-1])
+                for p in pts:
+                    curpt = pcbpoint.pcbpoint(p)
+                    actions.line_action(prevpt, curpt)
+                    prevpt = curpt
+
 
     if (not merge_polys):
         return
-    
+
     merged = merge_arcs_and_lines(merge_elts)
 
     # at this point, if there were objects that weren't merged into something, they'll
     # be lost.
-    
+
     for poly in merged:
         pts = []
         for elt in poly:
@@ -482,7 +503,6 @@ def traverse_graphics(board, layer, actions,
                       merge_polys=False,
                       break_curves=False):
 
-    
     merge_elts = []
     for d in board.GetDrawings():
         if ((layer != None) and (layer != d.GetLayerName())):
@@ -493,7 +513,7 @@ def traverse_graphics(board, layer, actions,
                 merge_elts.append(myline(d.GetStart(), d.GetEnd()))
             else:
                 actions.line_action(d.GetStart(), d.GetEnd())
-            
+
         elif (d.GetShape() == pcbnew.S_CIRCLE):
             actions.circle_action(d.GetCenter(), d.GetRadius()/SCALE)
 
@@ -508,7 +528,7 @@ def traverse_graphics(board, layer, actions,
             if (not break_curves):
                 # negative angles because kicad's y axis goes down.
                 actions.arc_action(d.GetCenter(),
-                                   d.GetRadius()/SCALE,                                   
+                                   d.GetRadius()/SCALE,
                                    -d.GetArcAngleStart()/10.0,
                                    -(d.GetArcAngleStart()+d.GetAngle())/10.0)
                 continue
@@ -528,12 +548,12 @@ def traverse_graphics(board, layer, actions,
 
     if (not merge_polys):
         return
-    
+
     merged = merge_arcs_and_lines(merge_elts)
 
     # at this point, if there were objects that weren't merged into something, they'll
     # be lost.
-    
+
     for poly in merged:
         pts = []
         for elt in poly:
@@ -550,112 +570,3 @@ def traverse_graphics(board, layer, actions,
             else:
                 pts.append(elt.start_point)
         actions.poly_action(pts)
-
-            
-#graphic_actions has callback to just print what's there
-#traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf", graphic_actions(True))
-
-# segment actions has callbacks to create graphic polys
-board = pcbnew.GetBoard()
-# generate a name->layer table so we can lookup layer numbers by name.
-layertable = {}
-numlayers = pcbnew.PCB_LAYER_ID_COUNT
-for i in range(numlayers):
-    layertable[pcbnew.GetBoard().GetLayerName(i)] = i
-
-shape_table = {}
-for s in filter(lambda s: re.match("S_.*", s), dir(pcbnew)):
-    shape_table[getattr(pcbnew, s)] = s
-
-
-    
-#traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
-#             segment_actions(board, layertable['Eco1.User']))
-#traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
-#             graphic_actions(True),
-#             merge_polys=True)
-
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
-                 segment_actions(board, layertable['Cmts.User']),
-                 merge_polys=True,
-                 break_curves=True)
-
-
-if (0):
-    if (1):
-        traverse_graphics(board, 'Cmts.User',
-                 orient_actions(board, "LED_5730"),
-                 merge_polys=True,
-                 break_curves=True)
-    else:
-        traverse_dxf("/bubba/electronicsDS/fusion/leds_projection.dxf",
-                     orient_actions(board, "LED_5730"),
-                     merge_polys=True,
-                     break_curves=True)
-
-
-
-    
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
-                 segment_actions(board, layertable['Eco1.User']),
-                 merge_polys=True,
-                 break_curves=True
-    )
-
-
-powerlayer = layertable["B.Cu"]
-# find a power net to add the zone to.
-powernet = None
-nets = board.GetNetsByName()
-for name in ["+12V", "+5V", "GND"]:
-    if (nets.has_key(name)):
-        powernet = nets[name]
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
-                 zone_actions(board, powernet, powerlayer),
-                 merge_polys=True,
-                 break_curves=True
-    )
-
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/boundary.dxf",
-                 segment_actions(board, layertable['Edge.Cuts']),
-                 merge_polys=False,
-                 break_curves=False)
-
-footprint_lib = '/home/mmccoo/kicad/kicad-footprints/MountingHole.pretty'
-
-footprint_mapping = {
-    "3.0": (footprint_lib, "MountingHole_3.2mm_M3")
-    }
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/mountingholes.dxf",
-                 mounting_actions(board, footprint_mapping))
-
-
-
-if (0):
-    traverse_graphics(board, "B.SilkS",
-                      segment_actions(board, layertable['Cmts.User']),
-                      merge_polys=True,
-                      break_curves=True)
-
-
-if (0):
-    traverse_dxf("/bubba/electronicsDS/fusion/powerrails.dxf",
-                 segment_actions(board, layertable['B.SilkS']),
-                 merge_polys=False,
-                 break_curves=True
-    )
-
-
-    
-pcbnew.Refresh()
-

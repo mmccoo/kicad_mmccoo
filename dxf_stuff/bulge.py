@@ -49,9 +49,26 @@ def bulge2arc(p1, p2, bulge):
     # in the code I stole above, the start and end angles are reversed
     # if bulge is negative. Even from reading the comments on that page,
     # I don't see why that is done.
+    # later edit. The page also has this line:
+    # "The returned bulge value may be positive or negative, depending
+    # upon whether the arc passing through the three points traces a clockwise
+    # or counter-clockwise path."
+    # negative indicates clockwise.
+    # so if going from point A->B at 90 degrees to -90 degress with bulge -1, we pass through 0
+    # if going from -90 to 90 also with bulge -1, we don't pass through 0.
     #if (bulge<0):
     #    return (c, np.rad2deg(angle(c, p2)), np.rad2deg(angle(c, p1)), np.absolute(r))
     #else:
-    return (c, np.rad2deg(angle(c, p1)), np.rad2deg(angle(c, p2)), np.absolute(r))
-        
+    a1 = np.rad2deg(angle(c, p1))
+    a2 = np.rad2deg(angle(c, p2))
+    # if clockwise (bulge<0) and the angles go from negative to positive, we
+    # don't cross 0 degress.
+    if (a1<0) and (a2>0) and (bulge<0):
+        a1 = a1+360.0
+    # if counterclockwise (bulge>0) and the angles go from positive to negative
+    # we also don't cross 0 degrees
+    if (a1>0) and (a2<0) and (bulge>0):
+        a2 = a2+360.0
+    return (c, a1, a2, np.absolute(r))
+
 #print(bulge2arc((0,10), (10,0), .5))

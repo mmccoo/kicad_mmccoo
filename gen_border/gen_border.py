@@ -47,7 +47,7 @@ class BBox:
 
     def __str__(self):
         return "({},{} {},{})".format(self.xl, self.yl, self.xh, self.yh)
-        
+
     def addPoint(self, pt):
         self.xl = mymin(self.xl, pt.x)
         self.xh = mymax(self.xh, pt.x)
@@ -59,19 +59,19 @@ class BBox:
         self.xh = mymax(self.xh, pt.x+x)
         self.yl = mymin(self.yl, pt.y-y)
         self.yh = mymax(self.yh, pt.y+y)
-        
+
 
 
 def GenerateBoarder():
     print("running generate boarder")
-    
+
     board = pcbnew.GetBoard()
 
     padshapes = {
         pcbnew.PAD_SHAPE_CIRCLE:  "PAD_SHAPE_CIRCLE",
         pcbnew.PAD_SHAPE_OVAL:    "PAD_SHAPE_OVAL",
         pcbnew.PAD_SHAPE_RECT:    "PAD_SHAPE_RECT",
-        pcbnew.PAD_SHAPE_TRAPEZOID: "PAD_SHAPE_TRAPEZOID"    
+        pcbnew.PAD_SHAPE_TRAPEZOID: "PAD_SHAPE_TRAPEZOID"
     }
     # new in the most recent kicad code
     if hasattr(pcbnew, 'PAD_SHAPE_ROUNDRECT'):
@@ -95,19 +95,19 @@ def GenerateBoarder():
 
 
     # the internal coorinate space of pcbnew is 10E-6 mm. (a millionth of a mm)
-    # the coordinate 121550000 corresponds to 121.550000 
+    # the coordinate 121550000 corresponds to 121.550000
     SCALE = 1000000.0
 
     boardbbox = BBox();
 
     print("getting tracks")
-    alltracks = board.GetTracks() 
+    alltracks = board.GetTracks()
     for track in alltracks:
         # print("{}->{}".format(track.GetStart(), track.GetEnd()))
         # print("{},{}->{},{} width {} layer {}".format(track.GetStart().x/SCALE, track.GetStart().y/SCALE,
         #                                               track.GetEnd().x/SCALE,   track.GetEnd().y/SCALE,
         #                                               track.GetWidth()/SCALE,
-        #                                               track.GetLayer())          
+        #                                               track.GetLayer())
         # )
         boardbbox.addPoint(track.GetStart())
         boardbbox.addPoint(track.GetEnd())
@@ -116,7 +116,7 @@ def GenerateBoarder():
     allpads = board.GetPads()
     for pad in allpads:
         #print("pad {} {}".format(pad.GetParent().GetReference(), pad.GetPadName()))
-        if (pad.GetShape() == pcbnew.PAD_SHAPE_RECT):        
+        if (pad.GetShape() == pcbnew.PAD_SHAPE_RECT):
             if ((pad.GetOrientationDegrees()==270) | (pad.GetOrientationDegrees()==90)):
                 boardbbox.addPointBloatXY(pad.GetPosition(), pad.GetSize().y/2, pad.GetSize().x/2)
             else:
@@ -231,7 +231,9 @@ def GenerateBoarder():
     # In the future, this build connectivity call will not be neccessary.
     # I have submitted a patch to include this in the code for Refresh.
     # You'll know you needed it if pcbnew crashes without it.
-    board.BuildConnectivity()
+    # later note: when running as a plugin, the plugin mechanism deals with
+    # this kind of stuff for you.
+    #board.BuildConnectivity()
 
-    pcbnew.Refresh()
+    #pcbnew.Refresh()
     print("done")
