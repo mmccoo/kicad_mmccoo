@@ -4,6 +4,7 @@ import wx
 import ntpath
 import pdb
 import os
+from sets import Set
 
 from ..save_config import save_config
 
@@ -95,23 +96,106 @@ class BaseDialog(wx.Dialog):
         self.SetClientSize(size)
 
 
-class ScrolledPicker(wx.ScrolledWindow):
-    def __init__(self, parent, cols=1):
-        wx.ScrolledWindow.__init__(self, parent, wx.ID_ANY)
+class ScrolledPicker(wx.Window):
+    def __init__(self, parent, singleton=True, cols=1):
+        wx.Window.__init__(self, parent, wx.ID_ANY)
+
+        self.singleton = singleton
+
+        self.boxes = []
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.SetSizer(self.sizer)
+
+
+        self.buttonwin = wx.Window(self)
+        self.buttonsizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.buttonwin.SetSizer(self.buttonsizer)
+        self.sizer.Add(self.buttonwin)
+
+        if (not singleton):
+            self.value = Set()
+
+            self.selectall = wx.Button(self.buttonwin, label="select all");
+            self.selectall.Bind(wx.EVT_BUTTON, self.OnSelectAllNone)
+            self.buttonsizer.Add(self.selectall)
+
+            self.selectnone = wx.Button(self.buttonwin, label="select none");
+            self.selectnone.Bind(wx.EVT_BUTTON, self.OnSelectAllNone)
+            self.buttonsizer.Add(self.selectnone)
+
+        self.scrolled = wx.ScrolledWindow(self, wx.ID_ANY)
+        self.sizer.Add(self.scrolled, proportion=1, flag=wx.EXPAND|wx.ALL)
 
         fontsz = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT).GetPixelSize()
-        self.SetScrollRate(fontsz.x, fontsz.y)
+        self.scrolled.SetScrollRate(fontsz.x, fontsz.y)
 
         self.scrollsizer = wx.GridSizer(cols=cols, hgap=5, vgap=5)
-        self.SetSizer(self.scrollsizer)
+        self.scrolled.SetSizer(self.scrollsizer)
 
     def Add(self, w):
+        w.Reparent(self.scrolled)
         self.scrollsizer.Add(w)
+        if (isinstance(w, wx.CheckBox) or isinstance(w, wx.RadioButton)):
+            self.boxes.append(w)
+
+    def AddSelector(self, name, binding=None):
+        if (binding == None):
+            binding = self.OnButton
+
+        if (not self.singleton):
+            rb = wx.CheckBox(self, label=name)
+            rb.Bind(wx.EVT_CHECKBOX, binding)
+        elif (len(self.boxes) == 0):
+            # boxes gets updated in Add
+            rb = wx.RadioButton(self.scrolled, label=name, style=wx.RB_GROUP)
+            rb.Bind(wx.EVT_RADIOBUTTON, binding)
+            self.SendSelectorEvent(rb)
+        else:
+            rb = wx.RadioButton(self.scrolled, label=name)
+            rb.Bind(wx.EVT_RADIOBUTTON, binding)
+
+        self.Add(rb)
+
+    def OnButton(self, event):
+        value = event.EventObject.GetLabel()
+
+        if (self.singleton):
+            self.value = value
+        else:
+            if (event.EventObject.IsChecked()):
+                self.value.add(value)
+            else:
+                self.value.remove(value)
+
+
+    def SendSelectorEvent(self, box):
+        if (isinstance(box, wx.CheckBox)):
+            # I have the feeling that this is the wrong way to trigger
+            # an event.
+            newevent = wx.CommandEvent(wx.EVT_CHECKBOX.evtType[0])
+            newevent.SetEventObject(box)
+            wx.PostEvent(box, newevent)
+
+        if (isinstance(box, wx.RadioButton)):
+            newevent = wx.CommandEvent(wx.EVT_RADIOBUTTON.evtType[0])
+            newevent.SetEventObject(box)
+            wx.PostEvent(box, newevent)
+
 
     def Clear(self):
         #self.scrollsizer.Clear()
-        self.DestroyChildren()
+        self.scrolled.DestroyChildren()
+        self.boxes = []
 
+    def OnSelectAllNone(self, event):
+        newvalue = True
+        if (event.EventObject == self.selectnone):
+            newvalue = False
+
+        for box in self.boxes:
+            box.SetValue(newvalue)
+            self.SendSelectorEvent(box)
 
 class FilePicker(wx.Window):
     def __init__(self, parent, value=None, wildcard=None, configname=None):
@@ -201,62 +285,57 @@ class BasicLayerPicker(wx.Window):
 # when adding an instance of this class to a sizer, it's really important
 # to pass the flag=wx.EXPAND
 class AllLayerPicker(ScrolledPicker):
-    def __init__(self, parent):
+    def __init__(self, parent, singleton=True):
         numlayers = pcbnew.PCB_LAYER_ID_COUNT
 
-        ScrolledPicker.__init__(self, parent, cols=4)
-
-        layertable = {}
+        ScrolledPicker.__init__(self, parent, singleton=singleton, cols=4)
 
         for i in range(numlayers):
             layername = pcbnew.GetBoard().GetLayerName(i)
-            layertable[layername] = i
-            if (i==0):
-                rb = wx.RadioButton(self,
-                                    label=layername,
-                                    style=wx.RB_GROUP)
-                self.value = layername
-            else:
-                rb = wx.RadioButton(self,
-                                    label=layername)
-            rb.Bind(wx.EVT_RADIOBUTTON, self.OnButton)
-            self.Add(rb)
+            self.AddSelector(layername)
 
-    def OnButton(self, event):
-        self.value = event.EventObject.GetLabel()
+
+
+class ModulePicker(ScrolledPicker):
+    def __init__(self, parent, singleton=True):
+        ScrolledPicker.__init__(self, parent, singleton=singleton, cols=4)
+
+        if (not self.singleton):
+            self.value = Set()
+
+        self.board = pcbnew.GetBoard()
+        modnames = [mod.GetReference() for mod in self.board.GetModules()]
+        modnames.sort()
+
+        for mod in modnames:
+            self.AddSelector(mod)
 
 
 class NetPicker(ScrolledPicker):
-    def __init__(self, parent):
+    def __init__(self, parent, singleton=True):
+        ScrolledPicker.__init__(self, parent, singleton=singleton, cols=4)
+
         self.board = pcbnew.GetBoard()
         nets = [str(net) for net in self.board.GetNetsByName().keys() if (str(net) != "")]
         nets.sort()
 
-
-        ScrolledPicker.__init__(self, parent, cols=4)
-
         for net in nets:
-            if (net == nets[0]):
-                rb = wx.RadioButton(self,
-                                    label=net,
-                                    style=wx.RB_GROUP)
-                self.value = net
-                self.valueptr = self.board.GetNetsByName()[net]
-            else:
-                rb = wx.RadioButton(self,
-                                    label=net)
-            rb.Bind(wx.EVT_RADIOBUTTON, self.OnButton)
-            self.Add(rb)
+            self.AddSelector(net)
 
-    def OnButton(self, event):
-        self.value = event.EventObject.GetLabel()
-        self.valueptr = self.board.GetNetsByName()[self.value]
+    def GetValuePtr(self):
+        nbn = self.board.GetNetsByName()
+        if (self.singleton):
+            return nbn[self.value]
 
+        retval = []
+        for net in self.value:
+            retval.append(nbn[net])
 
+        return retval
 
-class ModuleDialog(BaseDialog):
+class FootprintDialog(BaseDialog):
     def __init__(self):
-        super(ModuleDialog, self).__init__("simple dialog")
+        super(FootprintDialog, self).__init__("simple dialog")
 
         # GetLogicalLibs gives wxStrings
         libnames = [str(s) for s in pcbnew.GetLogicalLibs()]
@@ -307,7 +386,7 @@ class ModuleDialog(BaseDialog):
     def SetLib(self):
         self.modpicker.Clear()
 
-        mods = pcbnew.FootprintEnumerate(self.lib)
+        mods = pcbnew.FootprintsInLib(self.lib)
         for mod in mods:
             if (mod == mods[0]):
                 rb = wx.RadioButton(self.modpicker,

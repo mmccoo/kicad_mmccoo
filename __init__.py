@@ -5,9 +5,11 @@ import pcbnew
 print("initializing mmccoo_kicad")
 
 import gen_border
-from . import dxf_stuff
-from . import place_by_sch
-from . import instantiate_footprint
-from . import toggle_visibility
+import dxf_stuff
+import place_by_sch
+import instantiate_footprint
+import toggle_visibility
+import ratnest
+import utils
 
 print("done adding mmccoo_kicad")

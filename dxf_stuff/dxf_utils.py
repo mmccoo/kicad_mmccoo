@@ -229,17 +229,20 @@ def center_for_polygon(poly):
     return pcbpoint.pcbpoint(x,y,noscale=True)
 
 class orient_actions(graphic_actions):
-    def __init__(self, board, modname, print_unhandled=False):
+    def __init__(self, board, modnames, print_unhandled=False):
         graphic_actions.__init__(self, print_unhandled)
         self.board = board
-        self.modname = modname
+        self.modnames = Set(modnames)
 
     # I only care about poly because I want directionality (which a cirle doesn't have)
     # and I want to check for enclosing (which doesn't make sense for line, arc
     def poly_action(self, points):
         for mod in self.board.GetModules():
-            modname = mod.GetFPID().GetLibItemName().c_str()
-            if (modname != "LED_5730"):
+            #modname = mod.GetFPID().GetLibItemName().c_str()
+            #if (modname != "LED_5730"):
+            #    continue
+            modname = mod.GetReference()
+            if (modname not in self.modnames):
                 continue
             pos = pcbpoint.pcbpoint(mod.GetPosition())
             inside = point_inside_polygon(pos.x, pos.y, points)

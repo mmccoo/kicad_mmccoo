@@ -22,19 +22,19 @@ class SimpleDialog(DialogUtils.BaseDialog):
                              wx.DefaultPosition, wx.DefaultSize, 0)
         text.Wrap(-1)
 
-        scrolltest = DialogUtils.ScrolledPicker(self, rows=15)
+        scrolltest = DialogUtils.ScrolledPicker(self)
         for i in range(10):
             scrolltest.Add(wx.TextCtrl(parent=scrolltest, value='here' + str(i)));
         self.AddLabeled(item=scrolltest, label="scrolled", proportion=1, border=2)
-        
+
         # https://wxpython.org/Phoenix/docs/html/wx.Sizer.html#wx.Sizer.Add
         # https://wxpython.org/Phoenix/docs/html/wx.Sizer.html#wx-sizer
         self.Add(item=text, proportion=0, flag=wx.ALL, border=5)
 
-        self.file_picker = DialogUtils.FilePicker(self, "/home/mmccoo/kicad/kicad_mmccoo/simpledialog/simpledialog.py")        
+        self.file_picker = DialogUtils.FilePicker(self, "/home/mmccoo/kicad/kicad_mmccoo/simpledialog/simpledialog.py")
         self.Add(item=self.file_picker, proportion=0, flag=wx.ALL, border=5)
 
-        self.file_picker2 = DialogUtils.FilePicker(self, "/home/mmccoo/kicad/kicad_mmccoo/simpledialog/simpledialog.py")        
+        self.file_picker2 = DialogUtils.FilePicker(self, "/home/mmccoo/kicad/kicad_mmccoo/simpledialog/simpledialog.py")
         self.AddLabeled(item=self.file_picker2, label="this is the label",
                         proportion=0, flag=wx.ALL, border=2)
 
@@ -45,12 +45,20 @@ class SimpleDialog(DialogUtils.BaseDialog):
         self.basic_layer2 = DialogUtils.BasicLayerPicker(self)
         self.Add(item=self.basic_layer2, flag=wx.EXPAND)
 
-        self.nets = DialogUtils.NetPicker(self)
+        self.nets = DialogUtils.NetPicker(self, singleton=False)
         self.AddLabeled(item=self.nets,
                         label="all nets",
                         proportion=1,
                         flag=wx.EXPAND|wx.ALL,
                         border=2)
+
+        self.mods = DialogUtils.ModulePicker(self, singleton=False)
+        self.AddLabeled(item=self.mods,
+                        label="all mods",
+                        proportion=1,
+                        flag=wx.EXPAND|wx.ALL,
+                        border=2)
+
 
         self.all_layer = DialogUtils.AllLayerPicker(self)
         self.AddLabeled(item=self.all_layer,
@@ -59,11 +67,13 @@ class SimpleDialog(DialogUtils.BaseDialog):
                         flag=wx.EXPAND|wx.ALL,
                         border=2)
 
-        self.IncHeight(5)
-        
+        self.IncSize(height=10)
+
 dlg = SimpleDialog()
 res = dlg.ShowModal()
 
+print("nets {}".format(dlg.nets.value))
+print("mods {}".format(dlg.mods.value))
 #print("file {}".format(dlg.file_picker.filename))
 #print("basic layer {}".format(dlg.basic_layer.value))
 if res == wx.ID_OK:
