@@ -1,4 +1,16 @@
 # this file is here to make the external plugins of this repo available from the pcbnew menu.
+# to make these plugins available in your kicad, you'll need to have then be available here:
+# ~/ubuntu/.kicad_plugins/
+#in other worked ~/ubuntu/.kicad_plugins/kicad_mmccooo
+
+# for these particular plugins, you'll need dxfgrabber, numpy, scipy, shapely.
+# note that kicad is still on python 2.7.
+# sudo python2.7 -m ensurepip --default-pip
+# sudo pip2.7 install --upgrade pip
+# sudo pip2.7 install dxfgrabber
+# sudo pip2.7 install numpy
+# sudo pip2.7 install scipy
+# sudo pip2.7 install shapely
 
 import pcbnew
 

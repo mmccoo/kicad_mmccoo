@@ -13,7 +13,7 @@ from ..save_config import save_config
 # ok and cancel buttons. Very common. Surely, there is already such a class.
 # This class gives a basic dialog with ok and cancel buttons.
 class BaseDialog(wx.Dialog):
-    def __init__(self, dialogname):
+    def __init__(self, dialogname, onok=None):
         pcbnew_frame = \
             filter(lambda w: w.GetTitle().startswith('Pcbnew'), wx.GetTopLevelWindows())[0]
 
@@ -23,6 +23,8 @@ class BaseDialog(wx.Dialog):
                            pos=wx.DefaultPosition)
 
         self.ok_cbs = []
+        if onok:
+            self.ok_cbs.append(onok)
 
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.main_sizer)
@@ -342,17 +344,9 @@ class FootprintDialog(BaseDialog):
 
         self.libpicker = ScrolledPicker(self, cols=4)
 
+        self.libpicker.value = libnames[0]
         for lib in libnames:
-            if (lib == libnames[0]):
-                rb = wx.RadioButton(self.libpicker,
-                                    label=lib,
-                                    style=wx.RB_GROUP)
-                self.lib = lib
-            else:
-                rb = wx.RadioButton(self.libpicker,
-                                    label=lib)
-            rb.Bind(wx.EVT_RADIOBUTTON, self.OnLibButton)
-            self.libpicker.Add(rb)
+            self.libpicker.AddSelector(lib, self.OnLibButton)
 
         self.AddLabeled(item=self.libpicker,
                         label="Select a Library:",
@@ -377,27 +371,16 @@ class FootprintDialog(BaseDialog):
 
 
     def OnLibButton(self, event):
-        self.lib = event.EventObject.GetLabel()
+        self.libpicker.value = event.EventObject.GetLabel()
         self.SetLib();
 
-    def OnModButton(self, event):
-        self.value = (self.lib, event.EventObject.GetLabel())
 
     def SetLib(self):
         self.modpicker.Clear()
 
-        mods = pcbnew.FootprintsInLib(self.lib)
+        mods = pcbnew.FootprintsInLib(self.libpicker.value)
         for mod in mods:
-            if (mod == mods[0]):
-                rb = wx.RadioButton(self.modpicker,
-                                    label=mod,
-                                    style=wx.RB_GROUP)
-                self.value = (self.lib, mod)
-            else:
-                rb = wx.RadioButton(self.modpicker,
-                                    label=mod)
-            rb.Bind(wx.EVT_RADIOBUTTON, self.OnModButton)
-            self.modpicker.Add(rb)
+            self.modpicker.AddSelector(mod)
 
 
         self.Layout()

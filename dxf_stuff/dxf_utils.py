@@ -158,8 +158,7 @@ class mounting_actions(graphic_actions):
                 print("diameter {} not found in footprint mapping".format(d))
                 return
         fp = self.footprint_mapping[d]
-        io = pcbnew.PCB_IO()
-        mod = io.FootprintLoad(fp[0], fp[1])
+        mod = pcbnew.InstantiateFootprint(fp[0], fp[1])
         mod.SetPosition(pcbpoint.pcbpoint(center).wxpoint())
         if (self.flip):
             mod.Flip(pcbpoint.pcbpoint(center).wxpoint())

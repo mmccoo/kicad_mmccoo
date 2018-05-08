@@ -4,6 +4,7 @@ import wx
 import os
 import sys
 import inspect
+import pdb
 
 import dxf_utils
 from ..simpledialog import DialogUtils
@@ -13,8 +14,10 @@ import os.path
 from dxf_utils import zone_actions
 from dxf_utils import segment_actions
 from dxf_utils import orient_actions
+from dxf_utils import mounting_actions
 from dxf_utils import traverse_dxf
 from dxf_utils import traverse_graphics
+import mounting
 
 class DXFZoneDialog(DialogUtils.BaseDialog):
     def __init__(self):
@@ -149,3 +152,26 @@ class OrientToGraphicPlugin(pcbnew.ActionPlugin):
 
 
 OrientToGraphicPlugin().register()
+
+class DXFToMountingPlugin(pcbnew.ActionPlugin):
+    def defaults(self):
+        self.name = "DXF circles to modules"
+        self.category = "A descriptive category name"
+        self.description = "This plugin places a module for each circle in a DXF"
+
+    def Run(self):
+        dlg = mounting.MountingDialog(configname = "mountingmap")
+        res = dlg.ShowModal()
+
+        if res != wx.ID_OK:
+            return
+
+
+        traverse_dxf(dlg.file_picker.value,
+                     mounting_actions(pcbnew.GetBoard(),
+                                      dlg.value,
+                                      flip=dlg.flip.GetValue()))
+
+
+
+DXFToMountingPlugin().register()
