@@ -31,6 +31,8 @@ def iterable(a):
     except TypeError:
         return False
 
+
+
 def draw_poly(board, polys, layer):
     # sometimes shapely returns a poly sometimes a multi.
     if not iterable(polys):
@@ -161,12 +163,15 @@ def ViaFill(nets):
         for edge in mod.GraphicalItemsList():
             if type(edge) != pcbnew.EDGE_MODULE:
                 continue
-            x1, y1 = edge.GetStart()
-            x2, y2 = edge.GetEnd()
 
-            lines.append(LineString([edge.GetStart(), edge.GetEnd()]))
+            if edge.GetShapeStr() == 'Circle':
+                mods.append(Point(edge.GetPosition()).buffer(edge.GetRadius()))
+            else:
+                lines.append(LineString([edge.GetStart(), edge.GetEnd()]))
+
         # polygonize returns a generator. the polygons needs to be extracted from that.
-        mods.append(MultiPolygon(polygonize(lines)))
+        if (len(lines)):
+            mods.extend(polygonize(lines))
 
 
     #lines.append(((x1,y1),(x2,y2)))
@@ -186,7 +191,8 @@ def ViaFill(nets):
         # It actually could matter if it's a wire on the same net as the
         # fill area, but I don't care at the moment.
         tracks.append(LineString([track.GetStart(), track.GetEnd()]).
-                      buffer(track.GetWidth()/2, cap_style=CAP_STYLE.square))
+                      buffer(track.GetWidth()/2+pcbnew.Millimeter2iu(.2),
+                             cap_style=CAP_STYLE.square))
 
     bounds = []
     for d in board.GetDrawings():
@@ -198,10 +204,6 @@ def ViaFill(nets):
         else:
             bounds.append(LineString([d.GetStart(), d.GetEnd()]))
 
-    # unlike the other polys in this function, the boundary can have holes.
-    boundspoly = MultiPolygon(LinesToPolyHoles(bounds)).buffer(-pcbnew.Millimeter2iu(.6))
-
-    obstacles = cascaded_union(mods + tracks).buffer(pcbnew.Millimeter2iu(.6))
 
     for netname in nets:
         if (netname not in board.GetNetsByName()):
@@ -225,27 +227,37 @@ def ViaFill(nets):
             else:
                 tzonepolygons.append(polygon)
 
+        netclass = net.GetNetClass()
+        viadiameter = netclass.GetViaDiameter()
+
+        obstacles = cascaded_union(mods + tracks).buffer(viadiameter/2,
+                                                         cap_style=CAP_STYLE.flat,
+                                                         join_style=JOIN_STYLE.mitre)
+        #draw_poly(board, obstacles, layertable['Eco1.User'])
+
+
         # cascaded_union takes a list of polys and merges/unions them together
-        overlaps = cascaded_union(bzonepolygons).intersection(cascaded_union(tzonepolygons)).buffer(-pcbnew.Millimeter2iu(.6))
+        overlaps = cascaded_union(bzonepolygons).intersection(cascaded_union(tzonepolygons)).buffer(-viadiameter/2)
+
+        # unlike the other polys in this function, the boundary can have holes.
+        boundspoly = MultiPolygon(LinesToPolyHoles(bounds)).buffer(-viadiameter/2)
 
         overlapsinbound = overlaps.intersection(cascaded_union(boundspoly))
 
-        viaspots = overlapsinbound.difference(obstacles)
+        viaspots = list(overlapsinbound.difference(obstacles))
+        #draw_poly(board, viaspots, layertable['Eco1.User'])
 
-        netclass = net.GetNetClass()
-        viadiameter = netclass.GetViaDiameter()
 
         # this gives list of polygons where vias can be placed.
         # I got some unexpected behavior from shrinking. there's a self intersecting poly
         # in there I think.
         # viaspots above used to be called diff
         #viaspots = diff.buffer(-viadiameter/2, join_style=JOIN_STYLE.mitre)
-        draw_poly(board, viaspots, layertable['Eco1.User'])
+        #draw_poly(board, viaspots, layertable['Eco1.User'])
 
         # if buffer can return only one polygon that's what it will do.
         # otherwise it gives a list of polys
-        if type(viaspots) == Polygon:
-            viaspots = [viaspots]
+
 
         for spot in viaspots:
             if spot.is_empty:
@@ -259,7 +271,9 @@ def ViaFill(nets):
 
 
                 length=np.hypot(pt[0]-prevpt[0], pt[1]-prevpt[1])
-                numvias = int(length/viadiameter)+1
+
+                # I don't really want to maximize vias.
+                numvias = int(length/(viadiameter+pcbnew.Millimeter2iu(5)))+1
 
                 if (numvias == 1):
                     x = (prevpt[0]+pt[0])/2
