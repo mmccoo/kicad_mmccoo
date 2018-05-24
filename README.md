@@ -11,3 +11,12 @@ If you get nothing else out of this repository, take a look at this UML diagram.
 
 
 ![UML](plantuml/pcbnew_uml.png)
+
+# plugins
+This repo also contains a bunch of plugins, a description of which can be found in this youtube vide:
+
+[![YouTube video about the plugins](https://img.youtube.com/vi/VqegD7XZoFI/0.jpg)](https://www.youtube.com/watch?v=VqegD7XZoFI)
+
+## plugin install
+For linux... create a directory in your homedir called .kicad_plugins
+Inside of that directory either clone this repo or link to a clone of it.
