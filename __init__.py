@@ -23,5 +23,5 @@ import instantiate_footprint
 import toggle_visibility
 import ratnest
 import utils
-
+import svg2border
 print("done adding mmccoo_kicad")

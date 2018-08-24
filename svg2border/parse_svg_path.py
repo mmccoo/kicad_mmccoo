@@ -52,9 +52,9 @@ class SVGShape:
     def __init__(self, bound, holes):
         self.bound = bound
         self.holes = holes
-        
+
 # in this class, I have a bunch of places where a helper method modifies the
-# class. I don't really like the way I did that. It's not good coding. 
+# class. I don't really like the way I did that. It's not good coding.
 class SVGPath:
     def get_float(self):
         m = re.match("(-?[0-9]+(\.[0-9]*)?([eE]\-?[0-9]+)?)", self.d)
@@ -74,10 +74,10 @@ class SVGPath:
 
     def get_pt(self):
         return (self.get_float(), self.get_float())
-    
+
     def pt_add(self, a, b):
         return (a[0]+b[0], a[1]+b[1])
-    
+
     def transform_pt(self, pt):
         if not self.trans:
             return pt
@@ -94,9 +94,9 @@ class SVGPath:
         #      0        0       1 )
         #   which maps coordinates from a previous coordinate system into a
         #   new coordinate system by the following matrix equalities:
-        #    (xnewCoordSys ) =  ( a c e)  ( xprevCoordSys ) = ( axprevCoordSys+cyprevCoordSys+e )  
-        #     ynewCoordSys        b d f     yprevCoordSys       bxprevCoordSys+dyprevCoordSys+f 
-        #           1             0 0 1     1 )                 1  
+        #    (xnewCoordSys ) =  ( a c e)  ( xprevCoordSys ) = ( axprevCoordSys+cyprevCoordSys+e )
+        #     ynewCoordSys        b d f     yprevCoordSys       bxprevCoordSys+dyprevCoordSys+f
+        #           1             0 0 1     1 )                 1
 
         newx = self.trans[0] * pt[0] + self.trans[2] * pt[1] + self.trans[4]
         newy = self.trans[1] * pt[0] + self.trans[3] * pt[1] + self.trans[5]
@@ -115,13 +115,13 @@ class SVGPath:
         firstloc = None
         curloc = None
         curcmd = None
-        
+
         self.d = d.lstrip(" \t\n,")
 
         while self.d:
             # get_cmd returns passed argument as fallback
             cmd = self.get_cmd(curcmd)
-                
+
             if (cmd == 'M'):
                 curloc = self.get_pt()
                 if (not firstloc):
@@ -152,7 +152,7 @@ class SVGPath:
                 curloc = self.pt_add(curloc, pt)
                 self.append_pt(curloc)
                 curcmd = 'l'
-                
+
             elif (cmd == 'L'):
                 curloc = self.get_pt()
                 self.append_pt(curloc)
@@ -219,13 +219,13 @@ class SVGPath:
                 retshapes.append(SVGShape(bound, []))
 
         return retshapes
-            
+
     def __init__(self, d, trans):
         self.origd = d
 
         self.parse_path_string(d,trans)
 
-        
+
 # this site was helpful in debugging
 # http://www.bluebit.gr/matrix-calculator/multiply.aspx
 def multiply_transforms(a, b):
@@ -243,7 +243,7 @@ def multiply_transforms(a, b):
         ]
     return retval
 
-    
+
 # svg files can have multiple levels of transformation.
 # find and combine them.
 def combine_path_transforms(curtrans, curnode, parent_map):
@@ -263,7 +263,7 @@ def combine_path_transforms(curtrans, curnode, parent_map):
             trans = (1, 0, 0, 1) + tuple([float(x) for x in mo.group(1).split(',')])
             if len(trans) == 5:
                 trans = trans + (0)
-            
+
         if not trans:
             raise ValueError('wasnt able to match transform')
 
@@ -275,7 +275,7 @@ def combine_path_transforms(curtrans, curnode, parent_map):
             print("have trans {}".format(trans))
             curtrans = trans
 
-            
+
     if (curnode not in parent_map):
         return curtrans
 
@@ -302,9 +302,9 @@ def get_mm_from_dimension(val):
 
     return num*multiplier[dim]
 
-    
 
-    
+
+
 
 
 def parse_svg_path(filepath):
@@ -383,9 +383,9 @@ def poly_is_hole(poly):
     for pt in poly:
         # the area under a line is (actually twice the area, but we just
         # want the sign
-        area = area + (pt[0]-lastpt[0])/(pt[1]+lastpt[1])
+        area = area + (pt[0]-lastpt[0])*(pt[1]+lastpt[1])
         lastpt = pt
-    return (area>0.0)
+    return (area<0.0)
 
 # paths= parse_svg_path('/home/mmccoo/kicad/kicad_mmccoo/svg2border/drawing.svg')
 # for path in paths:
