@@ -44,12 +44,14 @@ def PlaceBySch():
     c1 = '$Comp'
     l1 = 'L Device:LED D49'
     t0   = '	1    0    0    -1'
+    t0f  = '	1    0    0    1'
     t180 = '	-1   0    0    1'
     t180f = '	-1   0    0    -1' # this is flipped horizontally
     tM90 = '	0    1    1    0'
     t90  = '	0    -1   -1   0'
     orientations = {
         str(trans_p.match(t0).groups()): 0,
+        str(trans_p.match(t0f).groups()): 0, # TWS added to handle flipped, but no rotation
         str(trans_p.match(t180).groups()): 180,
         str(trans_p.match(t180f).groups()): 180,
         str(trans_p.match(tM90).groups()): -90,
