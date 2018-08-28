@@ -6,11 +6,15 @@
 # for these particular plugins, you'll need dxfgrabber, numpy, scipy, shapely.
 # note that kicad is still on python 2.7.
 # sudo python2.7 -m ensurepip --default-pip
-# sudo pip2.7 install --upgrade pip
-# sudo pip2.7 install dxfgrabber
-# sudo pip2.7 install numpy
-# sudo pip2.7 install scipy
-# sudo pip2.7 install shapely
+#  or
+# sudo apt install python-pip
+
+
+# sudo pip2 install --upgrade pip
+# sudo pip2 install dxfgrabber
+# sudo pip2 install numpy
+# sudo pip2 install scipy
+# sudo pip2 install shapely
 
 import pcbnew
 

@@ -20,3 +20,17 @@ This repo also contains a bunch of plugins, a description of which can be found 
 ## plugin install
 For linux... create a directory in your homedir called .kicad_plugins
 Inside of that directory either clone this repo or link to a clone of it.
+
+## additional python packages are needed
+    # To get the dxf related plugins to work on linux systems, you'll need something like this:
+    # Make sure pip is available
+    sudo python2.7 -m ensurepip --default-pip
+    #  or
+    sudo apt install python-pip
+
+    # then these 
+    sudo pip2 install --upgrade pip
+    sudo pip2 install dxfgrabber
+    sudo pip2 install numpy
+    sudo pip2 install scipy
+    sudo pip2 install shapely
