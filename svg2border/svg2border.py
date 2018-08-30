@@ -2,15 +2,12 @@
 
 import pcbnew
 import wx
+import pdb
 
 import inspect
 
 import sys, os.path
-oldpath = sys.path
-# inspect.stack()[0][1] is the full path to the current file.
-sys.path.insert(0, os.path.dirname(inspect.stack()[0][1]))
 import parse_svg_path
-sys.path = oldpath
 
 from ..simpledialog import DialogUtils
 
@@ -128,7 +125,7 @@ def SVG2Zone(filename, board, layer, net):
 
 
     # here I load from drawing.svg in the current directory. You'll want to change that path.
-    paths = parse_svg_path.parse_svg_path(os.path.dirname(inspect.stack()[0][1]) + '/drawing.svg')
+    paths = parse_svg_path.parse_svg_path(filename)
     if not paths:
         raise ValueError('wasnt able to read any paths from file')
 
@@ -169,39 +166,50 @@ def SVG2Zone(filename, board, layer, net):
             zone_container.Hatch()
 
 
+def make_line(board, start, end, layer):
+
+    start = pcbnew.wxPoint(pcbnew.Millimeter2iu(start[0]), pcbnew.Millimeter2iu(start[1]))
+    end   = pcbnew.wxPoint(pcbnew.Millimeter2iu(end[0]),   pcbnew.Millimeter2iu(end[1]))
+    if (start == end):
+        return
+    seg = pcbnew.DRAWSEGMENT(board)
+    seg.SetLayer(layer)
+    seg.SetShape(pcbnew.S_SEGMENT)
+    seg.SetStart(start)
+    seg.SetEnd(end)
+    board.Add(seg)
+
+
 def SVG2Graphic(filename, board, layer):
     # the internal coorinate space of pcbnew is 10E-6 mm. (a millionth of a mm)
     # the coordinate 121550000 corresponds to 121.550000
     SCALE = 1000000.0
 
+
     # here I load from drawing.svg in the current directory. You'll want to change that path.
-    paths = parse_svg_path.parse_svg_path(os.path.dirname(inspect.stack()[0][1]) + '/drawing.svg')
+    paths = parse_svg_path.parse_svg_path(filename)
     if not paths:
         raise ValueError('wasnt able to read any paths from file')
 
     for path in paths:
         for shape in path.group_by_bound_and_holes():
 
-            seg = pcbnew.DRAWSEGMENT(board)
-            seg.SetLayer(layer)
-            seg.SetShape(pcbnew.S_SEGMENT)
-            board.Add(seg)
+            lastPt = shape.bound[0]
+            for pt in shape.bound[1:]:
+                # I'm getting repeated points from the svg. haven't investigated why.
+                if (pt == lastPt):
+                    continue
+                make_line(board, lastPt, pt, layer)
+                lastPt = pt
 
-            seg.SetShape(pcbnew.S_POLYGON)
 
-            shape_poly_set = seg.GetPolyShape()
-            shapeid = shape_poly_set.NewOutline()
-
-            for pt in shape.bound:
-                shape_poly_set.Append(int(pt[0]*SCALE), int(pt[1]*SCALE))
-
-            # for normal graphics, I don't think pcbnew/kicad supports holes.
             for hole in shape.holes:
-                hi = shape_poly_set.NewHole()
-                # -1 to the third arg maintains the default behavior of
-                # using the last outline.
-                for pt in hole:
-                    shape_poly_set.Append(int(pt[0]*SCALE), int(pt[1]*SCALE), -1, hi)
+                lastPt = hole[0]
+                for pt in hole[1:]:
+                    if (pt == lastPt):
+                        continue;
+                    make_line(board, lastPt, pt, layer)
+                    lastPt = pt
 
 
 
