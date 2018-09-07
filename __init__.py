@@ -25,7 +25,11 @@ import dxf_stuff
 import place_by_sch
 import instantiate_footprint
 import toggle_visibility
-import ratnest
+
+# I don't think it's possible to control ratsnets for individual nets.
+# It used to be possible, but not since the new connectivity algorithm.
+# import ratnest
+
 import utils
 import svg2border
 print("done adding mmccoo_kicad")

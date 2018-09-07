@@ -3,7 +3,7 @@ from . import toggle_visibility
 
 class ToggleVisibilityPlugin(pcbnew.ActionPlugin):
     def defaults(self):
-        self.name = "Toggle visibility of value/reference"
+        self.name = "Toggle visibility of value/reference (of selected modules)"
         self.category = "A descriptive category name"
         self.description = "This plugin toggles the visibility of any selected module values/references"
 
